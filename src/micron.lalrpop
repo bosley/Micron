@@ -1,5 +1,7 @@
 use std::str::FromStr;
 use crate::ast::{Expr, Opcode, Statement}; // (0)
+use rug;
+use rug::Assign;
 
 grammar;
 
@@ -70,11 +72,14 @@ Term: Box<Expr> = {
     "(" <Expr> ")"
 };
 
-Integer: i64 = {
-    r"[0-9]+" => i64::from_str(<>).unwrap()
+Integer: rug::Integer = {
+    r"[0-9]+" => {
+
+        let mut int = rug::Integer::new();
+        int.assign(rug::Integer::parse(<>).unwrap());
+        int
+    }
 };
-
-
 
 Variable: String = {
     r"[a-zA-Z_]+([0-9]+)?" => String::from_str(<>).unwrap()

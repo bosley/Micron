@@ -1,3 +1,4 @@
+use rug::Integer;
 
 #[derive(Debug)]
 pub enum Statement {
@@ -8,7 +9,7 @@ pub enum Statement {
 
 #[derive(Debug)]
 pub enum Expr {
-    Number(i64),
+    Number(Integer),
     Variable(String),
     Op(Box<Expr>, Opcode, Box<Expr>),
 }

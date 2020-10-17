@@ -1,5 +1,7 @@
 use std::convert::TryFrom;
 
+use rug::{Integer, ops::Pow};
+
 use crate::ast;
 use crate::env::Environment;
 use crate::env::Object;
@@ -172,7 +174,7 @@ impl <'a> Eval <'a> {
 
     /// Perform an operation on an integer type
     /// Panics on "pow" if rhs > u32::MAX
-    fn op_integer(&self, lhs: i64, rhs: i64, op: ast::Opcode) -> Object {
+    fn op_integer(&self, lhs: Integer, rhs: Integer, op: ast::Opcode) -> Object {
 
         return match op {
             ast::Opcode::Mul => {
@@ -192,27 +194,27 @@ impl <'a> Eval <'a> {
                 Object::Integer(lhs - rhs)
             }
             ast::Opcode::Lte => {
-                Object::Integer((lhs <= rhs) as i64)
+                Object::Integer(Integer::from(lhs <= rhs))
             }
 
             ast::Opcode::Gte => {
-                Object::Integer((lhs >= rhs) as i64)
+                Object::Integer(Integer::from(lhs >= rhs))
             }
 
             ast::Opcode::Lt => {
-                Object::Integer((lhs < rhs) as i64)
+                Object::Integer(Integer::from(lhs < rhs))
             }
 
             ast::Opcode::Gt => {
-                Object::Integer((lhs > rhs) as i64)
+                Object::Integer(Integer::from(lhs > rhs))
             }
 
             ast::Opcode::Equal => {
-                Object::Integer((lhs == rhs) as i64)
+                Object::Integer(Integer::from(lhs == rhs))
             }
 
             ast::Opcode::Ne => {
-                Object::Integer((lhs != rhs) as i64)
+                Object::Integer(Integer::from(lhs != rhs))
             }
 
             ast::Opcode::Pow => {
@@ -222,11 +224,11 @@ impl <'a> Eval <'a> {
                 let rhs_converted = match u32::try_from(rhs) {
                     Ok(r) => { r }
                     Err(e) => {
-                        panic!("Unable to convert {} into u32 for \"pow\": {}", rhs, e);
+                        panic!("Unable to convert value into u32 for \"pow\": {}", e);
                     }
                 };
 
-                Object::Integer(lhs.pow(rhs_converted))
+                Object::Integer(Integer::from(lhs.pow(rhs_converted)))
             }
 
             ast::Opcode::Mod => {
@@ -234,11 +236,41 @@ impl <'a> Eval <'a> {
             }
 
             ast::Opcode::Lsh => {
-                Object::Integer(lhs << rhs)
+
+                let rhs_converted = match u64::try_from(rhs) {
+                    Ok(r) => { r }
+                    Err(e) => {
+                        panic!("Unable to convert value into u64 for \"lsh\": {}", e);
+                    }
+                };
+
+                let lhs_converted = match u64::try_from(lhs) {
+                    Ok(r) => { r }
+                    Err(e) => {
+                        panic!("Unable to convert value into u64 for \"lsh\": {}", e);
+                    }
+                };
+
+                Object::Integer(Integer::from(lhs_converted << rhs_converted))
             }
 
             ast::Opcode::Rsh => {
-                Object::Integer(lhs >> rhs)
+
+                let rhs_converted = match u64::try_from(rhs) {
+                    Ok(r) => { r }
+                    Err(e) => {
+                        panic!("Unable to convert value into u64 for \"rhs\": {}", e);
+                    }
+                };
+
+                let lhs_converted = match u64::try_from(lhs) {
+                    Ok(r) => { r }
+                    Err(e) => {
+                        panic!("Unable to convert value into u64 for \"rhs\": {}", e);
+                    }
+                };
+                
+                Object::Integer(Integer::from(lhs_converted >> rhs_converted))
             }
 
             ast::Opcode::BwXor => {
@@ -246,7 +278,7 @@ impl <'a> Eval <'a> {
             }
 
             ast::Opcode::BwOr => {
-                Object::Integer(lhs << rhs)
+                Object::Integer(lhs | rhs)
             }
 
             ast::Opcode::BwAnd => {
@@ -256,17 +288,17 @@ impl <'a> Eval <'a> {
             ast::Opcode::Or => {
 
                 if lhs > 0 || rhs > 0{
-                    return Object::Integer(1);
+                    return Object::Integer(Integer::from(1));
                 }
-                return Object::Integer(0);
+                return Object::Integer(Integer::from(0));
             }
 
             ast::Opcode::And => {
                 
                 if lhs > 0 && rhs > 0{
-                    return Object::Integer(1);
+                    return Object::Integer(Integer::from(1));
                 }
-                return Object::Integer(0);
+                return Object::Integer(Integer::from(0));
             }
 
         }
