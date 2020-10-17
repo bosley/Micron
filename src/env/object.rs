@@ -1,7 +1,8 @@
+use crate::ast;
 
+use std::ops::Add;
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum Object {
-
-    Variable(String),
-    Integer(i32),
+    Integer(i64)
 }

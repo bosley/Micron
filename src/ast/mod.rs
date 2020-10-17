@@ -1,4 +1,6 @@
 
+use std::ops::Add;
+
 #[derive(Debug)]
 pub enum Statement {
 
@@ -7,7 +9,8 @@ pub enum Statement {
 
 #[derive(Debug)]
 pub enum Expr {
-    Number(i32),
+    Number(i64),
+    Variable(String),
     Op(Box<Expr>, Opcode, Box<Expr>),
 }
 

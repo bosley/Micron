@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 mod object;
-use object::Object;
+pub use object::Object;
 
 use crate::ast;
 
@@ -33,23 +33,14 @@ impl Environment {
         e
     }
 
+    pub fn set_variable(&mut self, key: String, value: Object) {
 
-    /// Parse Statement
-    pub fn evaluate_statement(&mut self, statement: ast::Statement) {
+    }
 
-        match statement {
+    pub fn get_variable(&mut self, key: &String) -> Option<Object> {
 
-            ast::Statement::Assignment(var, expr) => {
+   
 
-                println!("Var: {:?} | Expr: {:?}", var, expr);
-                
-                // Ensure var is unique
-
-                // Evaluate expression
-
-                // Store var with expression result in current scope 
-                // variable map
-            }
-        }
+        None
     }
 }

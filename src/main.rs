@@ -1,97 +1,71 @@
 
 
-pub mod ast;
+mod env;
+use env::Environment;
 
-pub mod env;
+mod eval;
+use eval::Eval;
+
+mod ast;
+
+use rustyline::error::ReadlineError;
+use rustyline::Editor;
 
 #[macro_use] 
 extern crate lalrpop_util;
 
 lalrpop_mod!(pub micron); // synthesized by LALRPOP
 
-/*
-struct Vm {
 
-    eval_stack: Vec<i32>
+fn main() {
+   repl();
 }
 
-impl Vm {
+fn repl() {
+    let mut env  = Environment::new();
+    let mut eval = Eval::new(&env);
 
-    fn new() -> Self {
-        Self {
-            eval_stack: Vec::new()
-        }
+    let mut rl = Editor::<()>::new();
+    if rl.load_history("repl-history.txt").is_err() {
+        println!("No previous repl history.");
     }
 
-    fn walk(&mut self, expr: ast::Expr) {
-    
-        match expr {
-            ast::Expr::Number(n) => {
-                //println!("{}", n);
+    loop {
 
-                self.eval_stack.push(n);
-            }
+        match rl.readline(">> ") {
 
-            ast::Expr::Op(lhs, op, rhs) => {
+            Ok(line) => {
+                rl.add_history_entry(line.as_str());
 
-                self.walk(*lhs);
-                self.walk(*rhs);
+                match micron::ProgramParser::new().parse(&line) {
 
-                //println!("{:?}", op);
-
-                let l = self.eval_stack.pop().unwrap();
-                let r = self.eval_stack.pop().unwrap();
-                let result : i32 = match op {
-                    ast::Opcode::Mul => {
-                        l * r
+                    Ok(statements)  => { 
+                        
+                        for x in statements {
+            
+                            eval.evaluate_statement(*x);
+                        } 
                     }
-                    ast::Opcode::Div => {
-                        l / r
-                    }
-                    ast::Opcode::Add => {
-                        l + r
-                    }
-                    ast::Opcode::Sub => {
-                        l - r
+                    Err(e) => { 
+                        println!("Error >>> {}", e);
+                        continue;
                     }
                 };
 
-                self.eval_stack.push(result);
+            },
+            Err(ReadlineError::Interrupted) => {
+                println!("CTRL-C");
+                break
+            },
+            Err(ReadlineError::Eof) => {
+                //println!("CTRL-D");
+                break
+            },
+            Err(err) => {
+                //println!("Error: {:?}", err);
+                break
             }
         }
     }
-
-    fn eval(&mut self, expr: ast::Expr) {
-
-        self.walk(expr);
-
-        println!("Result : {}", self.eval_stack.pop().unwrap());
-    }
-}
-*/
-
-fn main() {
-    println!("Hello, world!");
-
-    //let mut vm = Vm::new();
-
-   // let expr = micron::ExprParser::new()
-   //     .parse("(22 * 44) * (3 + (66 * 2) )")
-   //     .unwrap();
-//
-   // vm.eval(*expr);
-
-    let mut env = env::Environment::new();
-
-    let statements = micron::ProgramParser::new()
-        .parse("let a = 3 + 2;\n\
-                let b = 4 + 4;\n\
-                let a_1 = 3;")
-        .unwrap();
-
-    for x in statements {
-
-        env.evaluate_statement(*x);
-    } 
-
+    rl.save_history("repl-history.txt").unwrap();
 }
