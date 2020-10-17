@@ -13,3 +13,6 @@ Cargo.lock
 #Added by cargo
 
 /target
+
+# History file is a .txt and they are useless
+*.txt

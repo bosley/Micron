@@ -35,8 +35,14 @@ Expr: Box<Expr> = { // (1)
 };
 
 ExprOp: Opcode = { // (3)
-    "+" => Opcode::Add,
-    "-" => Opcode::Sub,
+    "+"  => Opcode::Add,
+    "-"  => Opcode::Sub,
+    "<=" => Opcode::Lte,
+    ">=" => Opcode::Gte,
+    ">"  => Opcode::Gt,
+    "<"  => Opcode::Lt,
+    "==" => Opcode::Equal,
+    "!=" => Opcode::Ne
 };
 
 Factor: Box<Expr> = {
@@ -45,19 +51,30 @@ Factor: Box<Expr> = {
 };
 
 FactorOp: Opcode = {
-    "*" => Opcode::Mul,
-    "/" => Opcode::Div,
+    "*"   => Opcode::Mul,
+    "/"   => Opcode::Div,
+    "**" => Opcode::Pow,
+    "%"   => Opcode::Mod,
+    "<<"  => Opcode::Lsh,
+    ">>"  => Opcode::Rsh,
+    "^"   => Opcode::BwXor,
+    "|"   => Opcode::BwOr,
+    "&"   => Opcode::BwAnd,
+    "||"  => Opcode::Or,
+    "&&"  => Opcode::And
 };
 
 Term: Box<Expr> = {
-    Num => Box::new(Expr::Number(<>)),
+    Integer => Box::new(Expr::Number(<>)),
     Variable => Box::new(Expr::Variable(<>)),
     "(" <Expr> ")"
 };
 
-Num: i64 = {
+Integer: i64 = {
     r"[0-9]+" => i64::from_str(<>).unwrap()
 };
+
+
 
 Variable: String = {
     r"[a-zA-Z_]+([0-9]+)?" => String::from_str(<>).unwrap()

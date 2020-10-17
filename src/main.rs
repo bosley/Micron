@@ -21,7 +21,22 @@ fn main() {
    repl();
 }
 
+fn repl_banner() {
+    println!("           ██████   ██████    ");
+    println!("          ░░██████ ██████     ");
+    println!("█████ ████ ░███░█████░███     ");
+    println!("░░███ ░███ ░███░░███ ░███     ");
+    println!("░███ ░███  ░███ ░░░  ░███     Micron Language REPL   ");
+    println!("░███ ░███  ░███      ░███     --------------------   ");
+    println!("░░████████ █████     █████    Author : Josh A. Bosley");
+    println!("░░░░░░░░   ░░░░░     ░░░░░    License: MIT           ");
+    println!("\n\n");
+}
+
 fn repl() {
+
+    repl_banner();
+
     let mut env  = Environment::new();
     let mut eval = Eval::new(&mut env);
 

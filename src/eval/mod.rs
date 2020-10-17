@@ -1,3 +1,4 @@
+use std::convert::TryFrom;
 
 use crate::ast;
 use crate::env::Environment;
@@ -46,7 +47,7 @@ impl <'a> Eval <'a> {
                     }
                 };
 
-                println!("Result : {:?}", result);
+                // println!("Result : {:?}", result);
 
                 self.env.set_variable(&var, result);
             }
@@ -69,29 +70,6 @@ impl <'a> Eval <'a> {
                 };
 
                 println!("{:?}", result);
-            }
-        }
-    }
-
-    /// Perform an operation on an integer type
-    fn op_integer(&self, lhs: i64, rhs: i64, op: ast::Opcode) -> Object {
-
-        return match op {
-            ast::Opcode::Mul => {
-                //println!("mul");
-                Object::Integer(lhs * rhs)
-            }
-            ast::Opcode::Div => {
-                //println!("div");
-                Object::Integer(lhs / rhs)
-            }
-            ast::Opcode::Add => {
-                //println!("add");
-                Object::Integer(lhs + rhs)
-            }
-            ast::Opcode::Sub => {
-                //println!("sub");
-                Object::Integer(lhs - rhs)
             }
         }
     }
@@ -190,5 +168,107 @@ impl <'a> Eval <'a> {
         }
 
         return Ok(())
+    }
+
+    /// Perform an operation on an integer type
+    /// Panics on "pow" if rhs > u32::MAX
+    fn op_integer(&self, lhs: i64, rhs: i64, op: ast::Opcode) -> Object {
+
+        return match op {
+            ast::Opcode::Mul => {
+                //println!("mul");
+                Object::Integer(lhs * rhs)
+            }
+            ast::Opcode::Div => {
+                //println!("div");
+                Object::Integer(lhs / rhs)
+            }
+            ast::Opcode::Add => {
+                //println!("add");
+                Object::Integer(lhs + rhs)
+            }
+            ast::Opcode::Sub => {
+                //println!("sub");
+                Object::Integer(lhs - rhs)
+            }
+            ast::Opcode::Lte => {
+                Object::Integer((lhs <= rhs) as i64)
+            }
+
+            ast::Opcode::Gte => {
+                Object::Integer((lhs >= rhs) as i64)
+            }
+
+            ast::Opcode::Lt => {
+                Object::Integer((lhs < rhs) as i64)
+            }
+
+            ast::Opcode::Gt => {
+                Object::Integer((lhs > rhs) as i64)
+            }
+
+            ast::Opcode::Equal => {
+                Object::Integer((lhs == rhs) as i64)
+            }
+
+            ast::Opcode::Ne => {
+                Object::Integer((lhs != rhs) as i64)
+            }
+
+            ast::Opcode::Pow => {
+
+                // Rust pow for i64 requires a u32 so we attempt to convert it to a u32
+                // if it fails a PANIC!
+                let rhs_converted = match u32::try_from(rhs) {
+                    Ok(r) => { r }
+                    Err(e) => {
+                        panic!("Unable to convert {} into u32 for \"pow\": {}", rhs, e);
+                    }
+                };
+
+                Object::Integer(lhs.pow(rhs_converted))
+            }
+
+            ast::Opcode::Mod => {
+                Object::Integer(lhs % rhs)
+            }
+
+            ast::Opcode::Lsh => {
+                Object::Integer(lhs << rhs)
+            }
+
+            ast::Opcode::Rsh => {
+                Object::Integer(lhs >> rhs)
+            }
+
+            ast::Opcode::BwXor => {
+                Object::Integer(lhs ^ rhs)
+            }
+
+            ast::Opcode::BwOr => {
+                Object::Integer(lhs << rhs)
+            }
+
+            ast::Opcode::BwAnd => {
+                Object::Integer(lhs & rhs)
+            }
+
+            ast::Opcode::Or => {
+
+                if lhs > 0 || rhs > 0{
+                    return Object::Integer(1);
+                }
+                return Object::Integer(0);
+            }
+
+            ast::Opcode::And => {
+                
+                if lhs > 0 && rhs > 0{
+                    return Object::Integer(1);
+                }
+                return Object::Integer(0);
+            }
+
+        }
     }
 }
