@@ -8,15 +8,14 @@ use error::EvalError;
 
 pub struct Eval <'a> {
 
-    env: &'a Environment,
-
+    env: &'a mut Environment,
     calculation_stack: Vec<Object>
 }
 
-
 impl <'a> Eval <'a> {
 
-    pub fn new(env: &'a Environment) -> Self {
+    /// Create a new evaluator
+    pub fn new(env: &'a mut Environment) -> Self {
         Self {
             env: env,
             calculation_stack: Vec::new()
@@ -28,15 +27,18 @@ impl <'a> Eval <'a> {
 
         match statement {
 
+            //  Assignment of a variable
+            //
             ast::Statement::Assignment(var, expr) => {
 
-                println!("Var: {:?} | Expr: {:?}", var, expr);
+                //println!("Var: {:?} | Expr: {:?}", var, expr);
 
+                // Evaluate the expression
                 if let Err(e) = self.evaluate_expression(*expr) {
-
                     println!("Error: {:?}", e);
                 }
 
+                // Get the result off the stack
                 let result = match self.calculation_stack.pop() {
                     Some(n) => { n }
                     None => { 
@@ -45,8 +47,28 @@ impl <'a> Eval <'a> {
                 };
 
                 println!("Result : {:?}", result);
-                // Store var with expression result in current scope 
-                // variable map
+
+                self.env.set_variable(&var, result);
+            }
+
+            //  Bare expression
+            //
+            ast::Statement::BareExpression(expr) => {
+
+                // Evaluate the expression
+                if let Err(e) = self.evaluate_expression(*expr) {
+                    println!("Error: {:?}", e);
+                }
+
+                // Get the result off the stack
+                let result = match self.calculation_stack.pop() {
+                    Some(n) => { n }
+                    None => { 
+                        panic!("Error: {:?} ", EvalError::StackError); 
+                    }
+                };
+
+                println!("{:?}", result);
             }
         }
     }
@@ -114,13 +136,22 @@ impl <'a> Eval <'a> {
             ast::Expr::Variable(var) => {
 
                 // Load Var here
+                match self.env.get_variable(&var) {
 
-                // Place in env::Object::Integer()
+                    Some(v) => {
 
-                // Push to stack
+                        // Place the item in the stack for computation
+                        self.calculation_stack.push(
+                            v.clone()
+                        );
+                    }
 
-                panic!("Variable loading not yet complete");
+                    None => {
 
+                        // No item by that variable name found, send the error
+                        return Err(EvalError::UnknownVariable(var));
+                    }
+                }
             }
 
             //  Operation
@@ -128,10 +159,14 @@ impl <'a> Eval <'a> {
             ast::Expr::Op(lhs, op, rhs) => {
 
                 // Evaluate the rhs
-                self.evaluate_expression(*rhs);
+                if let Err(e) = self.evaluate_expression(*rhs) {
+                    return Err(e);
+                }
 
                 // Evaluate the lhs
-                self.evaluate_expression(*lhs);
+                if let Err(e) = self.evaluate_expression(*lhs) {
+                    return Err(e);
+                }
 
                 // Get the lhs operand
                 let operation_lhs = match self.calculation_stack.pop() {

@@ -23,7 +23,7 @@ fn main() {
 
 fn repl() {
     let mut env  = Environment::new();
-    let mut eval = Eval::new(&env);
+    let mut eval = Eval::new(&mut env);
 
     let mut rl = Editor::<()>::new();
     if rl.load_history("repl-history.txt").is_err() {
@@ -61,7 +61,7 @@ fn repl() {
                 //println!("CTRL-D");
                 break
             },
-            Err(err) => {
+            Err(_err) => {
                 //println!("Error: {:?}", err);
                 break
             }

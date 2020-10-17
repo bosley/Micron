@@ -1,10 +1,9 @@
 
-use std::ops::Add;
-
 #[derive(Debug)]
 pub enum Statement {
 
-    Assignment(String, Box<Expr>)
+    Assignment(String, Box<Expr>),
+    BareExpression(Box<Expr>)
 }
 
 #[derive(Debug)]

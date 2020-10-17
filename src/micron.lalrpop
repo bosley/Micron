@@ -12,13 +12,20 @@ pub Program: Vec<Box<Statement>> = {
 // All of the types of statements within the language
 Statements: Box<Statement> = {
 
-    <a:AssignmentStatement> => a
+    <a:AssignmentStatement> => a,
+    <b:BareExpressionStatement> => b
 }
 
 // Assignment statement 
 AssignmentStatement: Box<Statement> = {
 
     "let" <v:Variable> "=" <e:Expr> ";" => Box::new(Statement::Assignment(v,e)),
+}
+
+// Bare Expression
+BareExpressionStatement: Box<Statement> = {
+
+    <e:Expr> => Box::new(Statement::BareExpression(e))
 }
 
 // Expression
@@ -43,7 +50,8 @@ FactorOp: Opcode = {
 };
 
 Term: Box<Expr> = {
-    Num => Box::new(Expr::Number(<>)), // (4)
+    Num => Box::new(Expr::Number(<>)),
+    Variable => Box::new(Expr::Variable(<>)),
     "(" <Expr> ")"
 };
 
