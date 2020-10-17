@@ -9,7 +9,7 @@ extern crate lalrpop_util;
 
 lalrpop_mod!(pub micron); // synthesized by LALRPOP
 
-
+/*
 struct Vm {
 
     eval_stack: Vec<i32>
@@ -68,11 +68,12 @@ impl Vm {
         println!("Result : {}", self.eval_stack.pop().unwrap());
     }
 }
+*/
 
 fn main() {
     println!("Hello, world!");
 
-    let mut vm = Vm::new();
+    //let mut vm = Vm::new();
 
    // let expr = micron::ExprParser::new()
    //     .parse("(22 * 44) * (3 + (66 * 2) )")
@@ -80,10 +81,17 @@ fn main() {
 //
    // vm.eval(*expr);
 
+    let mut env = env::Environment::new();
 
-    let expr = micron::StatementParser::new()
-        .parse("let a = 3 + 2;")
+    let statements = micron::ProgramParser::new()
+        .parse("let a = 3 + 2;\n\
+                let b = 4 + 4;\n\
+                let a_1 = 3;")
         .unwrap();
 
-   // vm.eval(*expr);
+    for x in statements {
+
+        env.evaluate_statement(*x);
+    } 
+
 }

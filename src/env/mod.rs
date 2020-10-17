@@ -41,6 +41,8 @@ impl Environment {
 
             ast::Statement::Assignment(var, expr) => {
 
+                println!("Var: {:?} | Expr: {:?}", var, expr);
+                
                 // Ensure var is unique
 
                 // Evaluate expression
