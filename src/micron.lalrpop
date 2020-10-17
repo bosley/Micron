@@ -1,7 +1,12 @@
 use std::str::FromStr;
-use crate::ast::{Expr, Opcode}; // (0)
+use crate::ast::{Expr, Opcode, Statement}; // (0)
 
 grammar;
+
+pub Statement: Box<Statement> = {
+
+    "let" <v:Variable> "=" <e:Expr> ";" => Box::new(Statement::Assignment(v,e))
+}
 
 pub Expr: Box<Expr> = { // (1)
     Expr ExprOp Factor => Box::new(Expr::Op(<>)), // (2)
@@ -30,4 +35,8 @@ Term: Box<Expr> = {
 
 Num: i32 = {
     r"[0-9]+" => i32::from_str(<>).unwrap()
+};
+
+Variable: String = {
+    r"[a-zA-Z]+" => String::from_str(<>).unwrap()
 };

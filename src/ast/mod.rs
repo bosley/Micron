@@ -1,5 +1,11 @@
 
 #[derive(Debug)]
+pub enum Statement {
+
+    Assignment(String, Box<Expr>)
+}
+
+#[derive(Debug)]
 pub enum Expr {
     Number(i32),
     Op(Box<Expr>, Opcode, Box<Expr>),

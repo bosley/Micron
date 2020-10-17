@@ -2,6 +2,8 @@
 
 pub mod ast;
 
+pub mod env;
+
 #[macro_use] 
 extern crate lalrpop_util;
 
@@ -25,7 +27,7 @@ impl Vm {
     
         match expr {
             ast::Expr::Number(n) => {
-                println!("{}", n);
+                //println!("{}", n);
 
                 self.eval_stack.push(n);
             }
@@ -35,38 +37,35 @@ impl Vm {
                 self.walk(*lhs);
                 self.walk(*rhs);
 
-                println!("{:?}", op);
+                //println!("{:?}", op);
 
                 let l = self.eval_stack.pop().unwrap();
                 let r = self.eval_stack.pop().unwrap();
-                let mut result : i32 = 0;
-                
-                match op {
+                let result : i32 = match op {
                     ast::Opcode::Mul => {
-                        result = l * r;
+                        l * r
                     }
                     ast::Opcode::Div => {
-                        result = l / r;
+                        l / r
                     }
                     ast::Opcode::Add => {
-                        result = l + r;
+                        l + r
                     }
                     ast::Opcode::Sub => {
-                        result = l - r;
+                        l - r
                     }
-                }
+                };
+
                 self.eval_stack.push(result);
             }
         }
     }
 
     fn eval(&mut self, expr: ast::Expr) {
-        
+
         self.walk(expr);
 
-        let result = self.eval_stack.pop().unwrap();
-
-        println!("Result : {}", result);
+        println!("Result : {}", self.eval_stack.pop().unwrap());
     }
 }
 
@@ -75,9 +74,16 @@ fn main() {
 
     let mut vm = Vm::new();
 
-    let expr = micron::ExprParser::new()
-        .parse("(22 * 44) * (3 + (66 * 2) )")
+   // let expr = micron::ExprParser::new()
+   //     .parse("(22 * 44) * (3 + (66 * 2) )")
+   //     .unwrap();
+//
+   // vm.eval(*expr);
+
+
+    let expr = micron::StatementParser::new()
+        .parse("let a = 3 + 2;")
         .unwrap();
 
-    vm.eval(*expr);
+   // vm.eval(*expr);
 }
