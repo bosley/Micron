@@ -1,6 +1,7 @@
-use rug::Integer;
+use rug::{ Integer, Float };
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub enum Object {
-    Integer(Integer)
+    Integer(Integer),
+    Float(Float)
 }

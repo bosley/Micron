@@ -1,4 +1,7 @@
-use rug::Integer;
+use rug::{ Integer, Float };
+
+/// Precision of floats in Micron
+pub const FLOAT_PRECISION: u32 = 53;
 
 #[derive(Debug)]
 pub enum Statement {
@@ -10,6 +13,7 @@ pub enum Statement {
 #[derive(Debug)]
 pub enum Expr {
     Number(Integer),
+    Real(Float),
     Variable(String),
     Op(Box<Expr>, Opcode, Box<Expr>),
 }

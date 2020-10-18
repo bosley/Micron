@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use rug::{Integer, ops::Pow};
+use rug::{Integer, Float, ops::Pow};
 
 use crate::ast;
 use crate::env::Environment;
@@ -38,7 +38,11 @@ impl <'a> Eval <'a> {
 
                 // Evaluate the expression
                 if let Err(e) = self.evaluate_expression(*expr) {
+
                     println!("Error: {:?}", e);
+
+                    self.calculation_stack.clear();
+                    return;
                 }
 
                 // Get the result off the stack
@@ -61,6 +65,9 @@ impl <'a> Eval <'a> {
                 // Evaluate the expression
                 if let Err(e) = self.evaluate_expression(*expr) {
                     println!("Error: {:?}", e);
+
+                    self.calculation_stack.clear();
+                    return;
                 }
 
                 // Get the result off the stack
@@ -77,10 +84,13 @@ impl <'a> Eval <'a> {
     }
 
     /// Perform operation on env objects
+    /// If a float is present, the expression is elevated to float
     fn perform_operation(&self, lhs: Object, rhs: Object, op: ast::Opcode) -> Result<Object, EvalError> {
 
         match lhs {
 
+            // Integer
+            //
             Object::Integer(i_lhs) => {
 
                 match rhs {
@@ -88,11 +98,33 @@ impl <'a> Eval <'a> {
                     Object::Integer(i_rhs) => {
 
                         return Ok(self.op_integer(i_lhs, i_rhs, op));
+                    },
+
+                    Object::Float(f_rhs) => {
+
+                        return Ok(self.op_float(Float::with_val(ast::FLOAT_PRECISION, i_lhs.to_f64()), f_rhs, op));
                     }
                 }
             }
 
             // Float type
+            //
+            Object::Float(f_lhs) => {
+
+                match rhs {
+
+                    Object::Integer(i_rhs) => {
+
+                        //return Ok(self.op_integer(i_lhs, i_rhs, op));
+                        return Ok(self.op_float(f_lhs, Float::with_val(ast::FLOAT_PRECISION, i_rhs.to_f64()), op));
+                    },
+
+                    Object::Float(f_rhs) => {
+
+                        return Ok(self.op_float(f_lhs, f_rhs, op));
+                    }
+                }
+            }
 
         }
     }
@@ -102,7 +134,7 @@ impl <'a> Eval <'a> {
 
         match expr {
 
-            //  Number found in expression
+            // Number found in expression
             //
             ast::Expr::Number(item) => {
 
@@ -113,6 +145,18 @@ impl <'a> Eval <'a> {
                 //println!(" > {}", item);
             }
 
+            // Real found in expression
+            ast::Expr::Real(item) => {
+
+                self.calculation_stack.push(
+                    Object::Float(item)
+                );
+
+                //println!(" > {}", item);
+            }
+
+            // Variable found in expression
+            //
             ast::Expr::Variable(var) => {
 
                 // Load Var here
@@ -283,6 +327,133 @@ impl <'a> Eval <'a> {
 
             ast::Opcode::BwAnd => {
                 Object::Integer(lhs & rhs)
+            }
+
+            ast::Opcode::Or => {
+
+                if lhs > 0 || rhs > 0{
+                    return Object::Integer(Integer::from(1));
+                }
+                return Object::Integer(Integer::from(0));
+            }
+
+            ast::Opcode::And => {
+                
+                if lhs > 0 && rhs > 0{
+                    return Object::Integer(Integer::from(1));
+                }
+                return Object::Integer(Integer::from(0));
+            }
+
+        }
+    }
+
+    /// Perform an operation on a float type
+    /// Panics on "pow" if rhs > f32::MAX
+    fn op_float(&self, lhs: Float, rhs: Float, op: ast::Opcode) -> Object {
+
+        return match op {
+            ast::Opcode::Mul => {
+                //println!("mul");
+                Object::Float(lhs * rhs)
+            }
+            ast::Opcode::Div => {
+                //println!("div");
+                Object::Float(lhs / rhs)
+            }
+            ast::Opcode::Add => {
+                //println!("add");
+                Object::Float(lhs + rhs)
+            }
+            ast::Opcode::Sub => {
+                //println!("sub");
+                Object::Float(lhs - rhs)
+            }
+            ast::Opcode::Lte => {
+                Object::Integer(Integer::from(lhs <= rhs))
+            }
+
+            ast::Opcode::Gte => {
+                Object::Integer(Integer::from(lhs >= rhs))
+            }
+
+            ast::Opcode::Lt => {
+                Object::Integer(Integer::from(lhs < rhs))
+            }
+
+            ast::Opcode::Gt => {
+                Object::Integer(Integer::from(lhs > rhs))
+            }
+
+            ast::Opcode::Equal => {
+                Object::Integer(Integer::from(lhs == rhs))
+            }
+
+            ast::Opcode::Ne => {
+                Object::Integer(Integer::from(lhs != rhs))
+            }
+
+            ast::Opcode::Pow => {
+
+                // Rust pow for i64 requires a u32 so we attempt to convert it to a u32
+                // if it fails a PANIC!
+                let rhs_converted = rhs.to_f64();
+                
+                Object::Float(Float::from(lhs.pow(rhs_converted)))
+            }
+
+            ast::Opcode::Mod => {
+                Object::Float(lhs % rhs)
+            }
+
+            ast::Opcode::Lsh => {
+
+                let rhs_converted = match u64::try_from(rhs.to_integer().unwrap()) {
+                    Ok(r) => { r }
+                    Err(e) => {
+                        panic!("Unable to convert value into u64 for \"lsh\": {}", e);
+                    }
+                };
+
+                let lhs_converted = match u64::try_from(lhs.to_integer().unwrap()) {
+                    Ok(r) => { r }
+                    Err(e) => {
+                        panic!("Unable to convert value into u64 for \"lsh\": {}", e);
+                    }
+                };
+
+                Object::Integer(Integer::from(lhs_converted << rhs_converted))
+            }
+
+            ast::Opcode::Rsh => {
+
+                let rhs_converted = match u64::try_from(rhs.to_integer().unwrap()) {
+                    Ok(r) => { r }
+                    Err(e) => {
+                        panic!("Unable to convert value into u64 for \"rhs\": {}", e);
+                    }
+                };
+
+                let lhs_converted = match u64::try_from(lhs.to_integer().unwrap()) {
+                    Ok(r) => { r }
+                    Err(e) => {
+                        panic!("Unable to convert value into u64 for \"rhs\": {}", e);
+                    }
+                };
+                
+                Object::Integer(Integer::from(lhs_converted >> rhs_converted))
+            }
+
+            ast::Opcode::BwXor => {
+                Object::Float( Float::with_val(ast::FLOAT_PRECISION, lhs.to_integer().unwrap() ^ rhs.to_integer().unwrap() ) )
+            }
+
+            ast::Opcode::BwOr => {
+                Object::Float( Float::with_val(ast::FLOAT_PRECISION, lhs.to_integer().unwrap() | rhs.to_integer().unwrap() ) )
+            }
+
+            ast::Opcode::BwAnd => {
+                Object::Float( Float::with_val(ast::FLOAT_PRECISION, lhs.to_integer().unwrap() & rhs.to_integer().unwrap() ) )
             }
 
             ast::Opcode::Or => {

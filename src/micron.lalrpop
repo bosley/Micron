@@ -1,5 +1,5 @@
 use std::str::FromStr;
-use crate::ast::{Expr, Opcode, Statement}; // (0)
+use crate::ast::{Expr, Opcode, Statement, FLOAT_PRECISION}; // (0)
 use rug;
 use rug::Assign;
 
@@ -68,18 +68,28 @@ FactorOp: Opcode = {
 
 Term: Box<Expr> = {
     Integer => Box::new(Expr::Number(<>)),
+    Float   => Box::new(Expr::Real(<>)),
     Variable => Box::new(Expr::Variable(<>)),
     "(" <Expr> ")"
 };
 
 Integer: rug::Integer = {
-    r"[0-9]+" => {
+    r"(\-)?[0-9]+" => {
 
         let mut int = rug::Integer::new();
         int.assign(rug::Integer::parse(<>).unwrap());
         int
     }
 };
+
+Float: rug::Float = {
+    r"(\-)?[0-9]+\.[0-9]+" => {
+
+        let mut int = rug::Float::new(FLOAT_PRECISION);
+        int.assign(rug::Float::parse(<>).unwrap());
+        int
+    }
+}
 
 Variable: String = {
     r"[a-zA-Z_]+([0-9]+)?" => String::from_str(<>).unwrap()
