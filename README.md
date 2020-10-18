@@ -8,6 +8,10 @@
 ░░████████ █████     █████    Author : Josh A. Bosley
 ░░░░░░░░   ░░░░░     ░░░░░    License: MIT          
 ```
+[![Build Status](https://travis-ci.com/bosley/Micron.svg?branch=main)](https://travis-ci.com/bosley/Micron) 
+![](https://img.shields.io/badge/Micron-Built%20with%20Rust-red)
+![](https://img.shields.io/badge/Status-WIP-yellow)
+
 
 The Micron (*uM*) language is a small toy language being used to help me explore rust and language creation. The Micron language uses [LALRPOP](https://github.com/lalrpop/lalrpop) along with [rug](https://gitlab.com/tspiteri/rug) to do the heavy lifting of language operations. It all started with me wanting to play with [LALRPOP](https://github.com/lalrpop/lalrpop) and then it seemed obvious that [rug](https://gitlab.com/tspiteri/rug) was the only good way to handle numbers. 
 
