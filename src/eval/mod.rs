@@ -83,51 +83,6 @@ impl <'a> Eval <'a> {
         }
     }
 
-    /// Perform operation on env objects
-    /// If a float is present, the expression is elevated to float
-    fn perform_operation(&self, lhs: Object, rhs: Object, op: ast::Opcode) -> Result<Object, EvalError> {
-
-        match lhs {
-
-            // Integer
-            //
-            Object::Integer(i_lhs) => {
-
-                match rhs {
-
-                    Object::Integer(i_rhs) => {
-
-                        return Ok(self.op_integer(i_lhs, i_rhs, op));
-                    },
-
-                    Object::Float(f_rhs) => {
-
-                        return Ok(self.op_float(Float::with_val(ast::FLOAT_PRECISION, i_lhs.to_f64()), f_rhs, op));
-                    }
-                }
-            }
-
-            // Float type
-            //
-            Object::Float(f_lhs) => {
-
-                match rhs {
-
-                    Object::Integer(i_rhs) => {
-
-                        //return Ok(self.op_integer(i_lhs, i_rhs, op));
-                        return Ok(self.op_float(f_lhs, Float::with_val(ast::FLOAT_PRECISION, i_rhs.to_f64()), op));
-                    },
-
-                    Object::Float(f_rhs) => {
-
-                        return Ok(self.op_float(f_lhs, f_rhs, op));
-                    }
-                }
-            }
-
-        }
-    }
 
     /// Evaluate an expression
     fn evaluate_expression(&mut self, expr: ast::Expr) -> Result<(), EvalError> {
@@ -178,6 +133,29 @@ impl <'a> Eval <'a> {
                 }
             }
 
+            //  Unary Operation
+            //
+            ast::Expr::UnaryOp(expr, op) => {
+
+                // Evaluate the expression
+                if let Err(e) = self.evaluate_expression(*expr) {
+                    return Err(e);
+                }
+
+                // Get the operand
+                let operand = match self.calculation_stack.pop() {
+                    Some(n) => { n }
+                    None => { return Err(EvalError::StackError); }
+                };
+
+                //  Perform the operation and push the result to the stack
+                match self.perform_unary_operation(operand, op) {
+
+                    Ok(v)  => { self.calculation_stack.push(v); }
+                    Err(e) => { return Err(e); }
+                }
+            }
+
             //  Operation
             //
             ast::Expr::Op(lhs, op, rhs) => {
@@ -214,6 +192,94 @@ impl <'a> Eval <'a> {
         }
 
         return Ok(())
+    }
+
+    /// Perform a unary operation
+    fn perform_unary_operation(&self, operand: Object, op: ast::UnaryOpcode) -> Result<Object, EvalError> {
+
+        match operand {
+
+            Object::Integer(i_op) => {
+                return Ok(self.op_unary_integer(i_op, op));
+            }
+
+            Object::Float(f_op) => {
+
+                // We only do this to integers
+                return Ok(self.op_unary_integer(f_op.to_integer().unwrap(), op));
+            }
+        }
+
+    }
+
+    /// Perform operation on env objects
+    /// If a float is present, the expression is elevated to float
+    fn perform_operation(&self, lhs: Object, rhs: Object, op: ast::Opcode) -> Result<Object, EvalError> {
+
+        match lhs {
+
+            // Integer
+            //
+            Object::Integer(i_lhs) => {
+
+                match rhs {
+
+                    Object::Integer(i_rhs) => {
+
+                        return Ok(self.op_integer(i_lhs, i_rhs, op));
+                    },
+
+                    Object::Float(f_rhs) => {
+
+                        return Ok(self.op_float(Float::with_val(ast::FLOAT_PRECISION, i_lhs.to_f64()), f_rhs, op));
+                    }
+                }
+            }
+
+            // Float type
+            //
+            Object::Float(f_lhs) => {
+
+                match rhs {
+
+                    Object::Integer(i_rhs) => {
+
+                        //return Ok(self.op_integer(i_lhs, i_rhs, op));
+                        return Ok(self.op_float(f_lhs, Float::with_val(ast::FLOAT_PRECISION, i_rhs.to_f64()), op));
+                    },
+
+                    Object::Float(f_rhs) => {
+
+                        return Ok(self.op_float(f_lhs, f_rhs, op));
+                    }
+                }
+            }
+
+        }
+    }
+
+    /// Perform unary operation on an integer
+    fn op_unary_integer(&self, operand: Integer, op: ast::UnaryOpcode) -> Object {
+
+        match op {
+
+            // Negate (!)
+            //
+            ast::UnaryOpcode::Negate => {
+
+                if operand > 0 {
+                    return Object::Integer(Integer::from(0));
+                } else {
+                    return Object::Integer(Integer::from(1));
+                }
+            }
+
+            // Not (~)
+            //
+            ast::UnaryOpcode::BwNot => {
+                return Object::Integer( !operand);
+            }
+        }
     }
 
     /// Perform an operation on an integer type

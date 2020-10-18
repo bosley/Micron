@@ -16,6 +16,7 @@ pub enum Expr {
     Real(Float),
     Variable(String),
     Op(Box<Expr>, Opcode, Box<Expr>),
+    UnaryOp(Box<Expr>, UnaryOpcode)
 }
 
 #[derive(Debug)]
@@ -39,4 +40,10 @@ pub enum Opcode {
     BwAnd,
     Or,
     And
+}
+
+#[derive(Debug)]
+pub enum UnaryOpcode {
+    Negate,
+    BwNot
 }

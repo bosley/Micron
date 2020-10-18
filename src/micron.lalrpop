@@ -1,5 +1,5 @@
 use std::str::FromStr;
-use crate::ast::{Expr, Opcode, Statement, FLOAT_PRECISION}; // (0)
+use crate::ast::{Expr, Opcode, UnaryOpcode, Statement, FLOAT_PRECISION}; // (0)
 use rug;
 use rug::Assign;
 
@@ -31,9 +31,11 @@ BareExpressionStatement: Box<Statement> = {
 }
 
 // Expression
-Expr: Box<Expr> = { // (1)
-    Expr ExprOp Factor => Box::new(Expr::Op(<>)), // (2)
+Expr: Box<Expr> = {
+    Expr ExprOp Factor => Box::new(Expr::Op(<>)),
     Factor,
+    "!" <f:Factor> => Box::new(Expr::UnaryOp(f, UnaryOpcode::Negate)),
+    "~" <f:Factor> => Box::new(Expr::UnaryOp(f, UnaryOpcode::BwNot)),
 };
 
 ExprOp: Opcode = { // (3)
@@ -43,8 +45,7 @@ ExprOp: Opcode = { // (3)
     ">=" => Opcode::Gte,
     ">"  => Opcode::Gt,
     "<"  => Opcode::Lt,
-    "==" => Opcode::Equal,
-    "!=" => Opcode::Ne
+    "==" => Opcode::Equal
 };
 
 Factor: Box<Expr> = {
@@ -70,24 +71,24 @@ Term: Box<Expr> = {
     Integer => Box::new(Expr::Number(<>)),
     Float   => Box::new(Expr::Real(<>)),
     Variable => Box::new(Expr::Variable(<>)),
-    "(" <Expr> ")"
+    "(" <Expr> ")",
 };
 
 Integer: rug::Integer = {
     r"(\-)?[0-9]+" => {
 
-        let mut int = rug::Integer::new();
-        int.assign(rug::Integer::parse(<>).unwrap());
-        int
+        let mut value = rug::Integer::new();
+        value.assign(rug::Integer::parse(<>).unwrap());
+        value
     }
 };
 
 Float: rug::Float = {
     r"(\-)?[0-9]+\.[0-9]+" => {
 
-        let mut int = rug::Float::new(FLOAT_PRECISION);
-        int.assign(rug::Float::parse(<>).unwrap());
-        int
+        let mut value = rug::Float::new(FLOAT_PRECISION);
+        value.assign(rug::Float::parse(<>).unwrap());
+        value
     }
 }
 
