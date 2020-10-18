@@ -1,5 +1,5 @@
 use std::str::FromStr;
-use crate::ast::{Expr, Opcode, UnaryOpcode, Statement, FLOAT_PRECISION}; // (0)
+use crate::ast::{Expr, Opcode, UnaryOpcode, Statement, FLOAT_PRECISION, StringExpr}; // (0)
 use rug;
 use rug::Assign;
 
@@ -21,13 +21,19 @@ Statements: Box<Statement> = {
 // Assignment statement 
 AssignmentStatement: Box<Statement> = {
 
-    "let" <v:Variable> "=" <e:Expr> ";" => Box::new(Statement::Assignment(v,e)),
+    "let" <v:Variable> "=" <e:Expr> ";"   => Box::new(Statement::Assignment(v,e)),
+    "let" <v:Variable> "=" <s:Sexpr> ";" => Box::new(Statement::StringAssignment(v,s))
 }
 
 // Bare Expression
 BareExpressionStatement: Box<Statement> = {
 
     <e:Expr> => Box::new(Statement::BareExpression(e))
+}
+
+// String Expression
+Sexpr: Box<StringExpr> = {
+    String => Box::new(StringExpr::String(<>))
 }
 
 // Expression
@@ -90,6 +96,10 @@ Float: rug::Float = {
         value.assign(rug::Float::parse(<>).unwrap());
         value
     }
+}
+
+String: String = {
+    r#""([^"\\]|\\[0nrt"\\])*""# => String::from(<>)
 }
 
 Variable: String = {

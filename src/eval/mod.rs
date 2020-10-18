@@ -80,9 +80,48 @@ impl <'a> Eval <'a> {
 
                 println!("{:?}", result);
             }
+
+            //  String Assignment
+            //
+            ast::Statement::StringAssignment(var, str_expr) => {
+
+                // Evaluate the expression
+                if let Err(e) = self.evaluate_string_expression(*str_expr) {
+                    println!("Error: {:?}", e);
+
+                    self.calculation_stack.clear();
+                    return;
+                }
+
+                // Get the result off the stack
+                let result = match self.calculation_stack.pop() {
+                    Some(n) => { n }
+                    None => { 
+                        panic!("Error: {:?} ", EvalError::StackError); 
+                    }
+                };
+
+                self.env.set_variable(&var, result);
+            }
         }
     }
 
+    /// Evaluate a string expression
+    fn evaluate_string_expression(&mut self, expr: ast::StringExpr) -> Result<(), EvalError> {
+
+        match expr {
+
+            ast::StringExpr::String(s) => {
+
+                self.calculation_stack.push(
+                    Object::String(s)
+                );
+
+            }
+        }
+
+        return Ok(());
+    }
 
     /// Evaluate an expression
     fn evaluate_expression(&mut self, expr: ast::Expr) -> Result<(), EvalError> {
@@ -208,6 +247,10 @@ impl <'a> Eval <'a> {
                 // We only do this to integers
                 return Ok(self.op_unary_integer(f_op.to_integer().unwrap(), op));
             }
+
+            _ => {
+                return Err(EvalError::InvalidUnaryExpression(operand, op));
+            }
         }
 
     }
@@ -216,13 +259,13 @@ impl <'a> Eval <'a> {
     /// If a float is present, the expression is elevated to float
     fn perform_operation(&self, lhs: Object, rhs: Object, op: ast::Opcode) -> Result<Object, EvalError> {
 
-        match lhs {
+        match lhs.clone() {
 
             // Integer
             //
             Object::Integer(i_lhs) => {
 
-                match rhs {
+                match rhs.clone() {
 
                     Object::Integer(i_rhs) => {
 
@@ -233,6 +276,10 @@ impl <'a> Eval <'a> {
 
                         return Ok(self.op_float(Float::with_val(ast::FLOAT_PRECISION, i_lhs.to_f64()), f_rhs, op));
                     }
+
+                    _ => {
+                        return Err(EvalError::InvalidExpression(lhs, op, rhs));
+                    }
                 }
             }
 
@@ -240,7 +287,7 @@ impl <'a> Eval <'a> {
             //
             Object::Float(f_lhs) => {
 
-                match rhs {
+                match rhs.clone() {
 
                     Object::Integer(i_rhs) => {
 
@@ -252,9 +299,18 @@ impl <'a> Eval <'a> {
 
                         return Ok(self.op_float(f_lhs, f_rhs, op));
                     }
+
+                    _ => {
+                        return Err(EvalError::InvalidExpression(lhs, op, rhs));
+                    }
                 }
             }
 
+            //  Other Types
+            //
+            _ => {
+                return Err(EvalError::InvalidExpression(lhs, op, rhs));
+            }
         }
     }
 
