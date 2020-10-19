@@ -1,7 +1,11 @@
 use std::str::FromStr;
-use crate::ast::{Expr, Opcode, UnaryOpcode, Statement, FLOAT_PRECISION, StringExpr}; // (0)
 use rug;
 use rug::Assign;
+
+use micron_ast::{
+    Expr, Opcode, UnaryOpcode, Statement, FLOAT_PRECISION, 
+    StringExpr, StringOp
+};
 
 grammar;
 
@@ -33,7 +37,17 @@ BareExpressionStatement: Box<Statement> = {
 
 // String Expression
 Sexpr: Box<StringExpr> = {
-    String => Box::new(StringExpr::String(<>))
+
+    <e:Sexpr> <o:Sop> <s:String>   => Box::new(StringExpr::Op(e, o, Box::new(StringExpr::String(s)))),
+    <e:Sexpr> <o:Sop> <s:Integer>  => Box::new(StringExpr::Op(e, o, Box::new(StringExpr::Number(s)))),
+    <e:Sexpr> <o:Sop> <s:Float>    => Box::new(StringExpr::Op(e, o, Box::new(StringExpr::Real(s)))),
+    <e:Sexpr> <o:Sop> <s:Variable> => Box::new(StringExpr::Op(e, o, Box::new(StringExpr::Variable(s)))),
+    <s:String> => Box::new(StringExpr::String(s))
+}
+
+Sop: StringOp = {
+
+    "+" => StringOp::Concatenate,
 }
 
 // Expression

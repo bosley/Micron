@@ -1,16 +1,20 @@
 [package]
-name = "micron"
+name = "Micron"
 version = "0.1.0"
 authors = ["bosley <bosley117@gmail.com>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace]
+members = [".", "ast", "environment", "interpreter", "parser"]
 
-[build-dependencies] # <-- We added this and everything after!
-lalrpop = { version="0.19.0", features = ["lexer"] }
+[[bin]]
+name = "micron-repl"
+path = "src/main.rs"
 
 [dependencies]
-lalrpop-util = "0.19.0"
-regex = "1"
 rustyline = "6.3.0"
-rug = "1.11.0"
+
+
+micron_interpreter = { path = "./interpreter" }
+micron_environment = { path = "./environment" }
+micron_parser = { path = "./parser" }
