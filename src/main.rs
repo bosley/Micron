@@ -1,21 +1,14 @@
 
 
-mod env;
-use env::Environment;
+extern crate micron_environment;
+extern crate micron_interpreter;
+extern crate micron_parser;
 
-mod eval;
-use eval::Eval;
-
-mod ast;
+use micron_environment::MicronEnv;
+use micron_interpreter::MicronInterpreter;
 
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
-
-#[macro_use] 
-extern crate lalrpop_util;
-
-lalrpop_mod!(pub micron); // synthesized by LALRPOP
-
 
 fn main() {
    repl();
@@ -37,8 +30,8 @@ fn repl() {
 
     repl_banner();
 
-    let mut env  = Environment::new();
-    let mut eval = Eval::new(&mut env);
+    let mut env  = MicronEnv::new();
+    let mut interpreter = MicronInterpreter::new(&mut env);
 
     let mut rl = Editor::<()>::new();
     if rl.load_history("repl-history.txt").is_err() {
@@ -52,13 +45,16 @@ fn repl() {
             Ok(line) => {
                 rl.add_history_entry(line.as_str());
 
-                match micron::ProgramParser::new().parse(&line) {
+                match micron_parser::micron::ProgramParser::new().parse(&line) {
 
                     Ok(statements)  => { 
                         
                         for x in statements {
             
-                            eval.evaluate_statement(*x);
+                            if let Err(e) = interpreter.interpret(*x) {
+
+                                println!("Error: {}", e);
+                            }
                         } 
                     }
                     Err(e) => { 

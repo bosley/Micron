@@ -1,6 +1,7 @@
+
 use rug::{ Integer, Float };
 
-/// Precision of floats in Micron
+/// Precision of floats read into Micron
 pub const FLOAT_PRECISION: u32 = 53;
 
 #[derive(Debug)]
@@ -13,7 +14,11 @@ pub enum Statement {
 
 #[derive(Debug)]
 pub enum StringExpr {
-    String(String)
+    String(String),
+    Number(Integer),
+    Real(Float),
+    Variable(String),
+    Op(Box<StringExpr>, StringOp, Box<StringExpr>)
 
     // Variable(String) // For Concatenation
     // Number(Integer)  // For Duplication
@@ -21,11 +26,13 @@ pub enum StringExpr {
     // Bracket(Box<StringExpr>, StringUnaryOp)
 }
 
-/*
+#[derive(Clone, Debug)]
 pub enum StringOp {
-    Add,                // Concatenate
+    Concatenate,         // Concatenate
     Mul,                // Duplicate - Like python
 }
+
+/*
 
 pub enum StringUnaryOp {
 

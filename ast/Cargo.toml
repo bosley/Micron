@@ -1,0 +1,9 @@
+[package]
+name = "micron_ast"
+version = "0.1.0"
+authors = ["bosley <bosley117@gmail.com>"]
+edition = "2018"
+
+
+[dependencies]
+rug = "1.11.0"
