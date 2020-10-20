@@ -37,11 +37,11 @@ a + 3 * 2
 
 |   Method         |  Params     |    Applicable Types
 |---               |---          |---
-|  .as_int         |   None      |    Integer, Float, String
-|  .as_float       |   None      |    Integer, Float, String
-|  .as_string      |   None      |    Integer, Float, String
-|  .with_precision |   Integer   |    Float
-|  .at             |   Integer   |    String
+|   as_int         |   None      |    Integer, Float, String
+|   as_float       |   None      |    Integer, Float, String
+|   as_string      |   None      |    Integer, Float, String
+|   with_precision |   Integer   |    Float
+|   at             |   Integer   |    String
 
 Examples:
 ```
@@ -50,6 +50,28 @@ Examples:
     let c = a.as_int();
 ```
 
+**Built in Functions**
+
+|  Function  |  Params           |   Applicable Types
+|--          |--                 |--
+|  to_int    | existing var name |    Integer, Float, String
+|  to_float  | existing var name |    Integer, Float, String
+|  to_string | existing var name |    Integer, Float, String
+
+Built in functions must be prefixed by a '$'. 
+
+Example output:
+```
+>> let a = 3;
+>> a
+Integer(MInteger { value: 3 })
+>> $to_string(a)
+String(MString { value: "Modifications Complete" })
+>> a
+String(MString { value: "3" })
+>> 
+
+```
 **Operations**
 
 Current operations are bellow and aim to follow the [C++ operation precedence](https://en.cppreference.com/w/cpp/language/operator_precedence).

@@ -31,6 +31,7 @@ AssignmentStatement: Box<Statement> = {
 BareExpressionStatement: Box<Statement> = {
 
     <e:Expr> => Box::new(Statement::BareExpression(e)),
+    <b:BuiltInFunction> => Box::new(Statement::BareExpression(b))
 }
 
 // Expression
@@ -84,12 +85,12 @@ Term: Box<Expr> = {
 };
 
 Method: Box<MemberMethod> = {
-    <v:Variable> "(" ")" => Box::new(MemberMethod{
-        method: v,
+    <f:Function> "(" ")" => Box::new(MemberMethod{
+        method: f,
         params: Vec::new()
     }),
-    <v:Variable> "(" <c:CallParams> ")" => Box::new(MemberMethod{
-        method: v,
+    <f:Function> "(" <c:CallParams> ")" => Box::new(MemberMethod{
+        method: f,
         params: c
     })
 }
@@ -98,13 +99,10 @@ CallParams: Vec<Box<Expr>> = {
     <v:Comma<Expr>> => <>
 }
 
-Comma<T>: Vec<T> = {
-    <v:(<T> ",")*> <e:T> => {
-        let mut v = v;
-        v.push(e);
-        v
-    },
-};
+BuiltInFunction: Box<Expr> = {
+
+    "$" <f:Function> "(" <v:Comma<Variable>> ")" => Box::new(Expr::Modifier(f, v))
+}
 
 Integer: rug::Integer = {
     r"(\-)?[0-9]+" => {
@@ -128,6 +126,18 @@ String: String = {
     r#""([^"\\]|\\[0nrt"\\])*""# => String::from(<>)
 }
 
+Function: String = {
+    r"[a-zA-Z_]+([0-9]+)?" => String::from_str(<>).unwrap()
+}
+
 Variable: String = {
     r"[a-zA-Z_]+([0-9]+)?" => String::from_str(<>).unwrap()
+};
+
+Comma<T>: Vec<T> = {
+    <v:(<T> ",")*> <e:T> => {
+        let mut v = v;
+        v.push(e);
+        v
+    },
 };

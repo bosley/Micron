@@ -1,5 +1,5 @@
 
-use crate::types::{MInteger, MFloat, MString, MDict,AsMicronType, DictItem, FromRug};
+use crate::types::{MInteger, MFloat, MString, AsMicronType, FromRug};
 use crate::object::Object;
 use crate::error::EnvError;
 
