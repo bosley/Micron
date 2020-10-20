@@ -138,8 +138,11 @@ impl <'a> ExpressionCalculator <'a> {
             //
             Expr::String(item) => {
 
+
+                let actual_string = item.as_str().trim_matches('"');
+
                 self.calculation_stack.push(
-                    Object::String(MString::new(item))
+                    Object::String(MString::new(actual_string.to_string()))
                 );
             }
 
