@@ -238,6 +238,46 @@ impl <'a> ExpressionCalculator <'a> {
                         }
                     }
 
+                    "at" => {
+
+                        if method.params.len() != 1 { 
+                            return Err(InterpreterError::EnvironmentError(
+                                EnvError::InvalidNumberOfParameters(1, method.params.len() as i32)
+                            ));
+                        }
+
+                        let exp = *method.params[0].clone();
+
+                        // Evaluate precision
+                        if let Err(e) = self.run_expression(exp) {
+                            return Err(e);
+                        }
+
+                        // Get the lhs operand
+                        let location = match self.calculation_stack.pop() {
+                            Some(n) => { n }
+                            None => { return Err(InterpreterError::StackError); }
+                        };
+
+                        match location {
+
+                            Object::Integer(i) => {
+
+                                match type_methods::at_string(item, i) {
+                                    Ok(obj) => return Ok(obj),
+                                    Err(e)  => return Err(InterpreterError::EnvironmentError(e))
+                                }
+                            }
+                            _ => {
+                                return Err(InterpreterError::EnvironmentError(
+                                    EnvError::InvalidParameter("at expects parameter type: Integer")
+                                ));
+                            }
+                        }
+
+
+                    }
+
                     "with_precision" => {
                         if method.params.len() != 1 { 
                             return Err(InterpreterError::EnvironmentError(
@@ -269,7 +309,7 @@ impl <'a> ExpressionCalculator <'a> {
                             }
                             _ => {
                                 return Err(InterpreterError::EnvironmentError(
-                                    EnvError::InvalidParameter("with_precision expects type: Integer")
+                                    EnvError::InvalidParameter("with_precision expects parameter type: Integer")
                                 ));
                             }
                         }

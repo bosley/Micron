@@ -11,26 +11,6 @@ pub enum Statement {
     BareExpression(Box<Expr>),
 }
 
-
-/*
-
-pub enum StringUnaryOp {
-
-    Bracket(Integer)    // my_str[3]
-}
-*/
-
-/*
-
-pub enum DictExpr {
-
-
-}
-
-*/
-
-
-
 #[derive(Debug, Clone)]
 pub enum Expr {
     Number(Integer),
@@ -39,7 +19,6 @@ pub enum Expr {
     Variable(String),
     Op(Box<Expr>, Opcode, Box<Expr>),
     UnaryOp(Box<Expr>, UnaryOpcode),
-
     Access(Box<Expr>, Accessors, Box<MemberMethod>),
 }
 

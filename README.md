@@ -35,12 +35,13 @@ a + 3 * 2
 
 **Data Methods**
 
-|   Method           |    Applicable Types
-|---                 |---
-|  .as_int()         |    Integers, Floats, Strings 
-|  .as_float()       |    Integers, Floats, Strings 
-|  .as_string()      |    Integers, Floats, Strings 
-|  .with_precision() |    Floats
+|   Method         |  Params     |    Applicable Types
+|---               |---          |---
+|  .as_int         |   None      |    Integer, Float, String
+|  .as_float       |   None      |    Integer, Float, String
+|  .as_string      |   None      |    Integer, Float, String
+|  .with_precision |   Integer   |    Float
+|  .at             |   Integer   |    String
 
 Examples:
 ```

@@ -3,6 +3,44 @@ use crate::types::{MInteger, MFloat, MString, MDict,AsMicronType, DictItem, From
 use crate::object::Object;
 use crate::error::EnvError;
 
+/// At a certain location of the string
+pub fn at_string(item: Object, idx: MInteger)-> Result<Object, EnvError> {
+
+    let converted_idx = idx.get_value().to_i64();
+
+    if converted_idx.is_none() {
+        return Err(EnvError::ObjectConversionError("Precision for float"));
+    }
+
+    match item {
+        Object::Float(_) => {
+            return Err(EnvError::NoMethodForType("Float", "at_string"));
+        }
+        Object::String(s) => {
+
+            //let mut n = MFloat::from_rug_float(f.get_value());
+            //n.set_precision(converted_prec.unwrap() as usize);
+            //return Ok(Object::Float(n));
+
+            if converted_idx.unwrap() > s.get_value().len() as i64 {
+                return Err(EnvError::InvalidParameter("Given index is out of range"));
+            }
+            
+            let s_idx = s.get_value().bytes().nth(converted_idx.unwrap() as usize).unwrap();
+
+            return Ok(Object::String(MString::new(String::from(s_idx as char))));
+
+        }
+        Object::Integer(_) => {
+            return Err(EnvError::NoMethodForType("Integer", "at_string"));
+        }
+        Object::Dict(_) => {
+            return Err(EnvError::NoMethodForType("Dict", "at_string"));
+
+        }
+    }
+}
+
 /// Convert an object to a string (built in function call)
 pub fn as_string(item: Object) -> Result<Object, EnvError> {
 
