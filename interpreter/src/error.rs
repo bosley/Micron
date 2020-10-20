@@ -10,5 +10,6 @@ pub enum InterpreterError {
     StackError,
     InvalidUnaryOperation,
     InvalidExpression,
-    InvalidStringExpression
+    InvalidStringExpression,
+    InvalidAccessor
 }

@@ -3,8 +3,7 @@ use rug;
 use rug::Assign;
 
 use micron_ast::{
-    Expr, Opcode, UnaryOpcode, Statement, FLOAT_PRECISION, 
-    StringExpr, StringOp
+    Expr, Opcode, UnaryOpcode, Statement, FLOAT_PRECISION, Accessors, MemberMethod
 };
 
 grammar;
@@ -26,37 +25,26 @@ Statements: Box<Statement> = {
 AssignmentStatement: Box<Statement> = {
 
     "let" <v:Variable> "=" <e:Expr> ";"   => Box::new(Statement::Assignment(v,e)),
-    "let" <v:Variable> "=" <s:Sexpr> ";" => Box::new(Statement::StringAssignment(v,s))
 }
 
 // Bare Expression
 BareExpressionStatement: Box<Statement> = {
 
-    <e:Expr> => Box::new(Statement::BareExpression(e))
-}
-
-// String Expression
-Sexpr: Box<StringExpr> = {
-
-    <e:Sexpr> <o:Sop> <s:String>   => Box::new(StringExpr::Op(e, o, Box::new(StringExpr::String(s)))),
-    <e:Sexpr> <o:Sop> <s:Integer>  => Box::new(StringExpr::Op(e, o, Box::new(StringExpr::Number(s)))),
-    <e:Sexpr> <o:Sop> <s:Float>    => Box::new(StringExpr::Op(e, o, Box::new(StringExpr::Real(s)))),
-    <e:Sexpr> <o:Sop> <s:Variable> => Box::new(StringExpr::Op(e, o, Box::new(StringExpr::Variable(s)))),
-    <s:String> => Box::new(StringExpr::String(s))
-}
-
-Sop: StringOp = {
-
-    "+" => StringOp::Concatenate,
+    <e:Expr> => Box::new(Statement::BareExpression(e)),
 }
 
 // Expression
 Expr: Box<Expr> = {
     Expr ExprOp Factor => Box::new(Expr::Op(<>)),
+    Expr Access Method => Box::new(Expr::Access(<>)),
     Factor,
     "!" <f:Factor> => Box::new(Expr::UnaryOp(f, UnaryOpcode::Negate)),
     "~" <f:Factor> => Box::new(Expr::UnaryOp(f, UnaryOpcode::BwNot)),
 };
+
+Access: Accessors = {
+    "."  => Accessors::Dot
+}
 
 ExprOp: Opcode = { // (3)
     "+"  => Opcode::Add,
@@ -76,7 +64,7 @@ Factor: Box<Expr> = {
 FactorOp: Opcode = {
     "*"   => Opcode::Mul,
     "/"   => Opcode::Div,
-    "**" => Opcode::Pow,
+    "**"  => Opcode::Pow,
     "%"   => Opcode::Mod,
     "<<"  => Opcode::Lsh,
     ">>"  => Opcode::Rsh,
@@ -91,7 +79,31 @@ Term: Box<Expr> = {
     Integer => Box::new(Expr::Number(<>)),
     Float   => Box::new(Expr::Real(<>)),
     Variable => Box::new(Expr::Variable(<>)),
+    String   => Box::new(Expr::String(<>)),
     "(" <Expr> ")",
+};
+
+Method: Box<MemberMethod> = {
+    <v:Variable> "(" ")" => Box::new(MemberMethod{
+        method: v,
+        params: Vec::new()
+    }),
+    <v:Variable> "(" <c:CallParams> ")" => Box::new(MemberMethod{
+        method: v,
+        params: c
+    })
+}
+
+CallParams: Vec<Box<Expr>> = {
+    <v:Comma<Expr>> => <>
+}
+
+Comma<T>: Vec<T> = {
+    <v:(<T> ",")*> <e:T> => {
+        let mut v = v;
+        v.push(e);
+        v
+    },
 };
 
 Integer: rug::Integer = {

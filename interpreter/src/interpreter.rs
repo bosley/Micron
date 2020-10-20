@@ -2,8 +2,8 @@
 extern crate micron_environment;
 extern crate micron_ast;
 
-use micron_ast::{ Statement, Expr, Opcode, UnaryOpcode, StringExpr, StringOp };
-use micron_environment::{ MicronEnv, EnvError, object::Object};
+use micron_ast::{ Statement };
+use micron_environment::{ MicronEnv };
 
 use crate::error::InterpreterError;
 use crate::calc_expression::ExpressionCalculator;
@@ -55,33 +55,6 @@ impl <'a> MicronInterpreter <'a> {
 
             }
 
-            // Variable string assignment
-            //
-            Statement::StringAssignment(variable, string_expression) => {
-
-                // Create a calculator for the expression
-                let mut calc = ExpressionCalculator::new(self.environment);
-
-                // Attempt to calculate the expression
-                match calc.evaluate_string_expression(*string_expression) {
-
-                    Ok(obj) => {
-
-                        // Attempt to set the variable to the calculated value
-                        if let Err(e) =  self.environment.set_variable(&variable, obj, None) {
-                            return Err(InterpreterError::EnvironmentError(e));
-                        }
-
-                        return Ok(())
-                    }
-
-                    Err(e) => {
-
-                        return Err(e);
-                    }
-                }
-            }
-
             // Evaluate raw expression
             //
             Statement::BareExpression(expression) => {
@@ -95,18 +68,16 @@ impl <'a> MicronInterpreter <'a> {
                     Ok(obj) => {
 
                         println!("{:?}", obj);
-                        
                         return Ok(());
                     }
 
                     Err(e) => {
-
                         return Err(e);
                     }
                 }
             }
 
-            
+
         }
     }
 }

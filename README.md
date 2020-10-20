@@ -17,8 +17,6 @@ The Micron (*uM*) language is a small toy language being used to help me explore
 
 ## Operations 
 
-The current operations of *uM* are limited to arithmetic with variables. There are no functions, or string types.. arrays.. or anything fancy.
-
 **Assignments**
 
 Variables can be assigned with the 'let' keyword. 
@@ -33,6 +31,23 @@ Any expression found without the 'let' keyword will be computed, with the result
 
 ```
 a + 3 * 2
+```
+
+**Data Methods**
+
+|   Method         |  Params     |    Applicable Types
+|---               |---          |---
+|  .as_int         |   None      |    Integer, Float, String
+|  .as_float       |   None      |    Integer, Float, String
+|  .as_string      |   None      |    Integer, Float, String
+|  .with_precision |   Integer   |    Float
+|  .at             |   Integer   |    String
+
+Examples:
+```
+    let a = (3.14).with_precision(10);
+    let b = "4".as_string();
+    let c = a.as_int();
 ```
 
 **Operations**

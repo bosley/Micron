@@ -9,6 +9,9 @@ pub use error::EnvError;
 pub mod types;
 
 #[allow(dead_code)]
+pub mod type_methods;
+
+#[allow(dead_code)]
 pub mod object;
 
 mod env;

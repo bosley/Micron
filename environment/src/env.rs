@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use crate::object::{ Object, get_object_from_dict_item };
+use crate::object::{ Object /*, get_object_from_dict_item */ };
 use crate::error::EnvError;
-use crate::types::{MInteger, MFloat, MString, MDict};
+use crate::types::{ MString };
 
 /// Object Scope
 struct Scope {
