@@ -35,13 +35,13 @@ a + 3 * 2
 
 **Data Methods**
 
-|   Method         |  Params     |    Applicable Types
-|---               |---          |---
-|   as_int         |   None      |    Integer, Float, String
-|   as_float       |   None      |    Integer, Float, String
-|   as_string      |   None      |    Integer, Float, String
-|   with_precision |   Integer   |    Float
-|   at             |   Integer   |    String
+|   Method         |  Params     |  In Expresison? |    Applicable Types
+|---               |---          |---              |---
+|   as_int         |   None      |       Yes       |    Integer, Float, String
+|   as_float       |   None      |       Yes       |    Integer, Float, String
+|   as_string      |   None      |       Yes       |    Integer, Float, String
+|   with_precision |   Integer   |       Yes       |    Float
+|   at             |   Integer   |       Yes       |    String
 
 Examples:
 ```
@@ -52,11 +52,13 @@ Examples:
 
 **Built in Functions**
 
-|  Function  |  Params           |   Applicable Types
-|--          |--                 |--
-|  to_int    | existing var name |    Integer, Float, String
-|  to_float  | existing var name |    Integer, Float, String
-|  to_string | existing var name |    Integer, Float, String
+|  Function  |  Params           |  In Expression? |   Applicable Types
+|--          |--                 |--               |--
+|  to_int    | existing var name |       No        |    Integer, Float, String
+|  to_float  | existing var name |       No        |    Integer, Float, String
+|  to_string | existing var name |       No        |    Integer, Float, String
+
+_
 
 Built in functions must be prefixed by a '$'. 
 
