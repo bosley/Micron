@@ -4,10 +4,9 @@ use std::convert::TryFrom;
 
 use rug::{Integer, Float, ops::Pow};
 
-use micron_ast::{ Statement, Expr, Opcode, UnaryOpcode, StringExpr, StringOp, FLOAT_PRECISION};
+use micron_ast::{ Expr, Opcode, UnaryOpcode, FLOAT_PRECISION};
 use micron_environment::{ 
     MicronEnv, 
-    EnvError, 
     object::Object, 
     types::{
         MInteger,
@@ -53,115 +52,9 @@ impl <'a> ExpressionCalculator <'a> {
         };
     }
 
-    /// Run an expression
-    pub fn evaluate_string_expression(&mut self, expression: StringExpr) -> Result<Object, InterpreterError> {
+    fn perform_string_op(&mut self, lhs: Object, rhs: Object, op: Opcode) -> Result<Object, InterpreterError> {
 
-        // Attempt to evaluate the expression
-        if let Err(e) = self.run_string_expression(expression) {
-
-            return Err(e);
-        }
-
-        // Get the result off the stack
-        match self.calculation_stack.pop() {
-            Some(n) => { return Ok(n); }
-            None => { 
-                return Err(InterpreterError::StackError);
-            }
-        };
-    }
-
-    //  Run the string expression
-    //
-    fn run_string_expression(&mut self, expression: StringExpr) -> Result<(), InterpreterError> {
-
-        match expression {
-
-            //  String
-            //
-            StringExpr::String(s) => {
-
-                // Remove '"' in the front and back of the string
-                let actual_string = s.as_str().trim_matches('"');
-
-                self.calculation_stack.push(
-                    Object::String(MString::new( String::from(actual_string)))
-                );
-            }
-
-            StringExpr::Number(item) => {
-
-                self.calculation_stack.push(
-                    Object::Integer(MInteger::from_rug_integer(item))
-                );
-            }
-
-            StringExpr::Real(item) => {
-
-                self.calculation_stack.push(
-                    Object::Float(MFloat::from_rug_float(item))
-                );
-            }
-
-            StringExpr::Variable(var) => {
-
-                // Load Var here
-                match self.env.get_variable(MString::new(var), None) {
-
-                    Ok(v) => {
-                        // Place the item in the stack for computation
-                        self.calculation_stack.push(
-                            v.clone()
-                        );
-                    }
-
-                    Err(e) => {
-
-                        // No item by that variable name found, send the error
-                        return Err(InterpreterError::EnvironmentError(e));
-                    }
-                }
-            }
-
-            //  String Expression
-            //
-            StringExpr::Op(lhs, op, rhs) => {
-
-                if let Err(e) = self.run_string_expression(*rhs) {
-                    return Err(e);
-                }
-
-                if let Err(e) = self.run_string_expression(*lhs) {
-                    return Err(e);
-                }
-
-                // Get the lhs operand
-                let operation_lhs = match self.calculation_stack.pop() {
-                    Some(n) => { n }
-                    None => { return Err(InterpreterError::StackError); }
-                };
-
-                // Get the rhs operand
-                let operation_rhs = match self.calculation_stack.pop() {
-                    Some(n) => { n }
-                    None => { return Err(InterpreterError::StackError); }
-                };
-                
-                //  Perform the operation and push the result to the stack
-                match self.perform_string_op(operation_lhs, operation_rhs, op) {
-
-                    Ok(v)  => { self.calculation_stack.push(v); }
-                    Err(e) => { return Err(e); }
-                }
-            }
-        }
-
-        return Ok(());
-    }
-
-    fn perform_string_op(&mut self, lhs: Object, rhs: Object, op: StringOp) -> Result<Object, InterpreterError> {
-
-        match op.clone() {
+        match op {
 
             // Concatenate Strings
             //
@@ -169,7 +62,7 @@ impl <'a> ExpressionCalculator <'a> {
             //      Need to allow the conversion of other types directly to string
             //
             //
-            StringOp::Concatenate => {
+            Opcode::Add => {
                 match lhs.clone() {
 
                     Object::String(s_lhs) => {
@@ -211,8 +104,8 @@ impl <'a> ExpressionCalculator <'a> {
                 }
             }
 
-            StringOp::Mul => {
-                panic!("Not yet complete");
+            _ => {
+                return Err(InterpreterError::InvalidStringExpression);
             }
         }
     }
@@ -238,6 +131,15 @@ impl <'a> ExpressionCalculator <'a> {
 
                 self.calculation_stack.push(
                     Object::Float(MFloat::from_rug_float(item))
+                );
+            }
+
+            // String
+            //
+            Expr::String(item) => {
+
+                self.calculation_stack.push(
+                    Object::String(MString::new(item))
                 );
             }
 
@@ -350,7 +252,7 @@ impl <'a> ExpressionCalculator <'a> {
 
     //  Perform an operation
     //
-    fn perform_operation(&self, lhs: Object, rhs: Object, op: Opcode) -> Result<Object, InterpreterError> {
+    fn perform_operation(&mut self, lhs: Object, rhs: Object, op: Opcode) -> Result<Object, InterpreterError> {
 
         match lhs.clone() {
 
@@ -368,6 +270,16 @@ impl <'a> ExpressionCalculator <'a> {
                     Object::Float(f_rhs) => {
 
                         return Ok(self.op_float(MFloat::from_rug_integer(i_lhs.get_value()), f_rhs, op));
+                    }
+
+                    Object::String(_) => {
+
+                        let s_lhs = match i_lhs.as_micron_string() {
+                            Ok(s)   => { Object::String( s ) }
+                            Err(e) =>  { return Err(InterpreterError::EnvironmentError(e)); }
+                        };
+
+                        return self.perform_string_op(s_lhs, rhs, op);
                     }
 
                     _ => {
@@ -393,10 +305,59 @@ impl <'a> ExpressionCalculator <'a> {
                         return Ok(self.op_float(f_lhs, f_rhs, op));
                     }
 
+                    Object::String(_) => {
+
+                        let s_lhs = match f_lhs.as_micron_string() {
+                            Ok(s)   => { Object::String( s ) }
+                            Err(e) =>  { return Err(InterpreterError::EnvironmentError(e)); }
+                        };
+
+                        return self.perform_string_op(s_lhs, rhs, op);
+                    }
+
                     _ => {
                         return Err(InterpreterError::InvalidExpression);
                     }
                 }
+            }
+
+            //  String Type
+            //
+            Object::String(_) => {
+
+                match rhs.clone() {
+
+                    Object::Integer(i_rhs) => {
+
+                        let s_rhs = match i_rhs.as_micron_string() {
+                            Ok(s)   => { Object::String( s ) }
+                            Err(e) =>  { return Err(InterpreterError::EnvironmentError(e)); }
+                        };
+
+                        return self.perform_string_op(lhs, s_rhs, op);
+                    },
+
+                    Object::Float(f_rhs) => {
+
+                        let s_rhs = match f_rhs.as_micron_string() {
+                            Ok(s)   => { Object::String( s ) }
+                            Err(e) =>  { return Err(InterpreterError::EnvironmentError(e)); }
+                        };
+
+                        return self.perform_string_op(lhs, s_rhs, op);
+                    }
+
+                    Object::String(_) => {
+
+                        return self.perform_string_op(lhs, rhs, op);
+                    }
+
+                    _ => {
+                        return Err(InterpreterError::InvalidExpression);
+                    }
+
+                }
+
             }
 
             //  Other Types

@@ -1,5 +1,3 @@
-use std::fmt;
-
 use derive_more::Display;
 
 #[derive(Display)]

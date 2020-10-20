@@ -8,29 +8,9 @@ pub const FLOAT_PRECISION: u32 = 53;
 pub enum Statement {
 
     Assignment(String, Box<Expr>),
-    StringAssignment(String, Box<StringExpr>),
-    BareExpression(Box<Expr>)
+    BareExpression(Box<Expr>),
 }
 
-#[derive(Debug)]
-pub enum StringExpr {
-    String(String),
-    Number(Integer),
-    Real(Float),
-    Variable(String),
-    Op(Box<StringExpr>, StringOp, Box<StringExpr>)
-
-    // Variable(String) // For Concatenation
-    // Number(Integer)  // For Duplication
-    // Concatenate(Box<StringExpr>, StringOp Box<StringExpr>)
-    // Bracket(Box<StringExpr>, StringUnaryOp)
-}
-
-#[derive(Clone, Debug)]
-pub enum StringOp {
-    Concatenate,         // Concatenate
-    Mul,                // Duplicate - Like python
-}
 
 /*
 
@@ -55,6 +35,7 @@ pub enum DictExpr {
 pub enum Expr {
     Number(Integer),
     Real(Float),
+    String(String),
     Variable(String),
     Op(Box<Expr>, Opcode, Box<Expr>),
     UnaryOp(Box<Expr>, UnaryOpcode)

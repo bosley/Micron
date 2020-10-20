@@ -3,8 +3,7 @@ use rug;
 use rug::Assign;
 
 use micron_ast::{
-    Expr, Opcode, UnaryOpcode, Statement, FLOAT_PRECISION, 
-    StringExpr, StringOp
+    Expr, Opcode, UnaryOpcode, Statement, FLOAT_PRECISION
 };
 
 grammar;
@@ -26,28 +25,12 @@ Statements: Box<Statement> = {
 AssignmentStatement: Box<Statement> = {
 
     "let" <v:Variable> "=" <e:Expr> ";"   => Box::new(Statement::Assignment(v,e)),
-    "let" <v:Variable> "=" <s:Sexpr> ";" => Box::new(Statement::StringAssignment(v,s))
 }
 
 // Bare Expression
 BareExpressionStatement: Box<Statement> = {
 
-    <e:Expr> => Box::new(Statement::BareExpression(e))
-}
-
-// String Expression
-Sexpr: Box<StringExpr> = {
-
-    <e:Sexpr> <o:Sop> <s:String>   => Box::new(StringExpr::Op(e, o, Box::new(StringExpr::String(s)))),
-    <e:Sexpr> <o:Sop> <s:Integer>  => Box::new(StringExpr::Op(e, o, Box::new(StringExpr::Number(s)))),
-    <e:Sexpr> <o:Sop> <s:Float>    => Box::new(StringExpr::Op(e, o, Box::new(StringExpr::Real(s)))),
-    <e:Sexpr> <o:Sop> <s:Variable> => Box::new(StringExpr::Op(e, o, Box::new(StringExpr::Variable(s)))),
-    <s:String> => Box::new(StringExpr::String(s))
-}
-
-Sop: StringOp = {
-
-    "+" => StringOp::Concatenate,
+    <e:Expr> => Box::new(Statement::BareExpression(e)),
 }
 
 // Expression
@@ -91,6 +74,7 @@ Term: Box<Expr> = {
     Integer => Box::new(Expr::Number(<>)),
     Float   => Box::new(Expr::Real(<>)),
     Variable => Box::new(Expr::Variable(<>)),
+    String   => Box::new(Expr::String(<>)),
     "(" <Expr> ")",
 };
 
