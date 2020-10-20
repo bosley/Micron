@@ -137,7 +137,14 @@ impl MFloat {
         }
     }
 
-    pub fn get_precesion(&self) -> usize {
+    pub fn set_precision(&mut self, value: usize) {
+        self.precision = value;
+        let mut v = Float::new(self.precision as u32);
+        v.assign(self.value.to_f64());
+        self.value = v;
+    }
+
+    pub fn get_precision(&self) -> usize {
         self.precision
     }
 

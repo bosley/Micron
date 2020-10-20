@@ -3,7 +3,7 @@ use rug;
 use rug::Assign;
 
 use micron_ast::{
-    Expr, Opcode, UnaryOpcode, Statement, FLOAT_PRECISION
+    Expr, Opcode, UnaryOpcode, Statement, FLOAT_PRECISION, Accessors, MemberMethod
 };
 
 grammar;
@@ -36,10 +36,15 @@ BareExpressionStatement: Box<Statement> = {
 // Expression
 Expr: Box<Expr> = {
     Expr ExprOp Factor => Box::new(Expr::Op(<>)),
+    Expr Access Method => Box::new(Expr::Access(<>)),
     Factor,
     "!" <f:Factor> => Box::new(Expr::UnaryOp(f, UnaryOpcode::Negate)),
     "~" <f:Factor> => Box::new(Expr::UnaryOp(f, UnaryOpcode::BwNot)),
 };
+
+Access: Accessors = {
+    "."  => Accessors::Dot
+}
 
 ExprOp: Opcode = { // (3)
     "+"  => Opcode::Add,
@@ -59,7 +64,7 @@ Factor: Box<Expr> = {
 FactorOp: Opcode = {
     "*"   => Opcode::Mul,
     "/"   => Opcode::Div,
-    "**" => Opcode::Pow,
+    "**"  => Opcode::Pow,
     "%"   => Opcode::Mod,
     "<<"  => Opcode::Lsh,
     ">>"  => Opcode::Rsh,
@@ -76,6 +81,29 @@ Term: Box<Expr> = {
     Variable => Box::new(Expr::Variable(<>)),
     String   => Box::new(Expr::String(<>)),
     "(" <Expr> ")",
+};
+
+Method: Box<MemberMethod> = {
+    <v:Variable> "(" ")" => Box::new(MemberMethod{
+        method: v,
+        params: Vec::new()
+    }),
+    <v:Variable> "(" <c:CallParams> ")" => Box::new(MemberMethod{
+        method: v,
+        params: c
+    })
+}
+
+CallParams: Vec<Box<Expr>> = {
+    <v:Comma<Expr>> => <>
+}
+
+Comma<T>: Vec<T> = {
+    <v:(<T> ",")*> <e:T> => {
+        let mut v = v;
+        v.push(e);
+        v
+    },
 };
 
 Integer: rug::Integer = {

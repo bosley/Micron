@@ -31,17 +31,19 @@ pub enum DictExpr {
 
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expr {
     Number(Integer),
     Real(Float),
     String(String),
     Variable(String),
     Op(Box<Expr>, Opcode, Box<Expr>),
-    UnaryOp(Box<Expr>, UnaryOpcode)
+    UnaryOp(Box<Expr>, UnaryOpcode),
+
+    Access(Box<Expr>, Accessors, Box<MemberMethod>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Opcode {
     Mul,
     Div,
@@ -64,8 +66,20 @@ pub enum Opcode {
     And
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum UnaryOpcode {
     Negate,
     BwNot
 }
+
+#[derive(Debug, Clone)]
+pub enum Accessors {
+    Dot,
+}
+
+#[derive(Debug, Clone)]
+pub struct MemberMethod {
+    pub method: String,
+    pub params: Vec<Box<Expr>>
+}
+
