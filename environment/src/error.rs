@@ -29,4 +29,10 @@ pub enum EnvError {
 
     #[display(fmt = "Type {} has no method named {} associated with it", _0, _1)]
     NoMethodForType(&'static str, &'static str),
+
+    #[display(fmt = "Dictionary does not contain key {}", _0)]
+    UnknownKeyForDict(String),
+
+    #[display(fmt = "Incorrect type {}, message : {}", _0, _1)]
+    IncorrectType(String, &'static str),
 }

@@ -1,5 +1,5 @@
 
-use crate::types::{MInteger, MFloat, MString, MDict, DictItem, FromRug};
+use crate::types::{MInteger, MFloat, MString, MDict, DictItem};
 
 #[derive(Debug, Clone)]
 pub enum Object {
@@ -9,19 +9,20 @@ pub enum Object {
     Dict(MDict)
 }
 
-pub fn get_object_from_dict_item(item: DictItem) -> Object {
+pub fn object_to_dict_item(obj: Object) -> DictItem {
+    match obj {
+        Object::Integer(i) => DictItem::DictInteger(i),
+        Object::Float(i)   => DictItem::DictFloat(i),
+        Object::String(i)  => DictItem::DictString(i),
+        Object::Dict(i)    => DictItem::DictDict(i)
+    }
+}
 
-    match item {
-        DictItem::DictInteger(i) => {
-            Object::Integer(MInteger::from_rug_integer(i.get_value()))
-        }
-
-        DictItem::DictFloat(f) => {
-            Object::Float(MFloat::from_rug_float(f.get_value()))
-        }
-
-        DictItem::DictString(s) => {
-            Object::String(MString::new(s.get_value()))
-        }
+pub fn dict_item_to_object(di: DictItem) -> Object {
+    match di {
+        DictItem::DictInteger(i) => Object::Integer(i),
+        DictItem::DictFloat(i)   => Object::Float(i),
+        DictItem::DictString(i)  => Object::String(i),
+        DictItem::DictDict(i)    => Object::Dict(i),
     }
 }

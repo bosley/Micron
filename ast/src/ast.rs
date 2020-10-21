@@ -8,7 +8,7 @@ pub const FLOAT_PRECISION: u32 = 53;
 pub enum Statement {
 
     Assignment(String, Box<Expr>),
-    BareExpression(Box<Expr>),
+    BareExpression(Box<Expr>)
 }
 
 #[derive(Debug, Clone)]
@@ -18,9 +18,16 @@ pub enum Expr {
     String(String),
     Variable(String),
     Modifier(String, Vec<String>),
+
     Op(Box<Expr>, Opcode, Box<Expr>),
     UnaryOp(Box<Expr>, UnaryOpcode),
     Access(Box<Expr>, Accessors, Box<MemberMethod>),
+
+    // { .. }
+    Dict(Vec<Box<DictEntry>>),
+
+    // Variable, Key
+    VarDict(String, String),
 }
 
 #[derive(Debug, Clone)]
@@ -54,11 +61,17 @@ pub enum UnaryOpcode {
 
 #[derive(Debug, Clone)]
 pub enum Accessors {
-    Dot,
+    Dot
 }
 
 #[derive(Debug, Clone)]
 pub struct MemberMethod {
     pub method: String,
     pub params: Vec<Box<Expr>>
+}
+
+#[derive(Debug, Clone)]
+pub struct DictEntry {
+    pub key: String,
+    pub value: Box<Expr>
 }

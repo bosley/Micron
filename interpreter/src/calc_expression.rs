@@ -8,11 +8,15 @@ use micron_ast::{ Expr, Opcode, UnaryOpcode, FLOAT_PRECISION, Accessors, MemberM
 use micron_environment::{ 
     MicronEnv, 
     EnvError,
-    object::Object, 
+    object::{
+        Object,
+        object_to_dict_item
+    },
     types::{
         MInteger,
         MFloat,
         MString,
+        MDict,
         FromRug,
         AsMicronType
     },
@@ -83,10 +87,8 @@ impl <'a> ExpressionCalculator <'a> {
             //
             Expr::String(item) => {
 
-                let actual_string = item.as_str().trim_matches('"');
-
                 self.calculation_stack.push(
-                    Object::String(MString::new(actual_string.to_string()))
+                    Object::String(MString::new(item.to_string()))
                 );
             }
 
@@ -104,6 +106,77 @@ impl <'a> ExpressionCalculator <'a> {
 
                     Err(e) => {
                         return Err(InterpreterError::EnvironmentError(e));
+                    }
+                }
+            }
+
+            //  Load a dict
+            //
+            Expr::Dict(values) => {
+
+                let mut new_dict : MDict = MDict::new();
+
+                for value in values {
+
+                    // Evaluate the expression for the value of the dict
+                    if let Err(e) = self.run_expression(*value.value) {
+                        return Err(e);
+                    }
+
+                    // Get the value
+                    let calculated_value = match self.calculation_stack.pop() {
+                        Some(n) => { n }
+                        None => { return Err(InterpreterError::StackError); }
+                    };
+
+                    new_dict.set_item(
+                        MString::new(value.key.clone()), 
+                        object_to_dict_item(calculated_value)
+                    );
+                }
+
+                self.calculation_stack.push(
+                    Object::Dict(new_dict)
+                );
+            }
+
+            Expr::VarDict(var, key) => {
+
+                // Get the thing we suspect is a dictionary
+                let suspect = match self.env.get_variable(MString::new(var.clone()), None) {
+                    Ok(v) => {
+                        v
+                    }
+
+                    Err(e) => {
+                        return Err(InterpreterError::EnvironmentError(e));
+                    }
+                };
+
+                // Ensure the item is a dictionary
+                match suspect {
+                    Object::Dict(mut d) => {
+
+                        // Attempt to get item as an object from the dict
+                        match d.get_item_as_object(MString::new(key)) {
+                            Ok(v) => {
+
+                                self.calculation_stack.push(
+                                    v
+                                );
+                            }
+
+                            Err(e) => {
+                                return Err(InterpreterError::EnvironmentError(e));
+                            }
+                        }
+                    }
+
+                    // Item isn't a dict
+                    _ => {
+                        return Err(InterpreterError::EnvironmentError(
+                            EnvError::IncorrectType(var, "Item is not a dictionary")
+                        ));
                     }
                 }
             }

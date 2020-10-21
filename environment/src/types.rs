@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use rug::{Integer, Float, Assign};
 
 use crate::error::EnvError;
+use crate::object::{ Object, dict_item_to_object};
 
 extern crate micron_ast;
 use micron_ast::FLOAT_PRECISION;
@@ -53,8 +54,8 @@ pub struct MString {
 pub enum DictItem {
     DictInteger(MInteger),
     DictFloat(MFloat),
-    DictString(MString)
-
+    DictString(MString),
+    DictDict(MDict)
     // DictFunc(statements) ???
 }
 
@@ -286,11 +287,25 @@ impl MDict {
         self.items.insert(key.get_value(), item);
     }
 
-    pub fn get_item(&mut self, key: MString) -> Option<DictItem> {
+    fn get_item(&mut self, key: MString) -> Option<DictItem> {
 
         match self.items.get(&key.get_value()) {
             Some(v) => { return Some(v.clone()); }
             None    => { return None; }
+        }
+    }
+
+    pub fn get_item_as_object(&mut self, key: MString) -> Result<Object, EnvError> {
+        match self.get_item(MString::new(key.get_value())) {
+            Some(value) => {
+
+                return Ok(dict_item_to_object(value));
+            }
+
+            // Key doesn't exist
+            None => {
+                return Err(EnvError::UnknownKeyForDict(key.get_value()));
+            }
         }
     }
 }
