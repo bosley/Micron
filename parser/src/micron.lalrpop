@@ -37,7 +37,6 @@ BareExpressionStatement: Box<Statement> = {
 // Expression
 Expr: Box<Expr> = {
     Expr ExprOp Factor => Box::new(Expr::Op(<>)),
-    Expr Access Method => Box::new(Expr::Access(<>)),
     Factor,
     "!" <f:Factor> => Box::new(Expr::UnaryOp(f, UnaryOpcode::Negate)),
     "~" <f:Factor> => Box::new(Expr::UnaryOp(f, UnaryOpcode::BwNot)),
@@ -59,6 +58,7 @@ ExprOp: Opcode = { // (3)
 
 Factor: Box<Expr> = {
     Factor FactorOp Term => Box::new(Expr::Op(<>)),
+    Term Access Method => Box::new(Expr::Access(<>)),
     Term,
 };
 
