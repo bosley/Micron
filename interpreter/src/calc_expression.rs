@@ -23,13 +23,13 @@ use crate::error::InterpreterError;
 
 pub struct ExpressionCalculator <'a> {
 
-    env: &'a MicronEnv,
+    env: &'a mut MicronEnv,
     calculation_stack: Vec<Object>
 }
 
 impl <'a> ExpressionCalculator <'a> {
 
-    pub fn new(env: &'a MicronEnv) -> Self {
+    pub fn new(env: &'a mut MicronEnv) -> Self {
 
         Self {
             env: env,
@@ -106,6 +106,21 @@ impl <'a> ExpressionCalculator <'a> {
                         return Err(InterpreterError::EnvironmentError(e));
                     }
                 }
+            }
+
+            // Built in Modifiers
+            //
+            Expr::Modifier(function, variables) => {
+
+                let result = self.perform_modification(function, variables);
+
+                if result.is_some() {
+                    return Err(result.unwrap());
+                }
+
+                self.calculation_stack.push(
+                    Object::String(MString::new(String::from("Modifications Complete")))
+                );
             }
 
             // Accessor
@@ -189,6 +204,76 @@ impl <'a> ExpressionCalculator <'a> {
             }
         }
         return Ok(())
+    }
+
+    // Perform modification
+    fn perform_modification(&mut self, function: String, variables: Vec<String>) -> Option<InterpreterError> {
+
+        let mut variable_objects : Vec<(String, Object)> = Vec::new();
+
+        //  Get all of the variables to modify
+        for var in variables {
+            match self.env.get_variable(MString::new(var.clone()), None) {
+                Ok(v) => {
+                    variable_objects.push((var, v));
+                }
+
+                Err(e) => {
+                    return Some(InterpreterError::EnvironmentError(e));
+                }
+            }
+        }
+
+        let mut okay = true;
+        for var in variable_objects.clone() {
+            match function.as_str() {
+
+                "to_integer" => {
+                    match type_methods::as_int(var.1) {
+                        Ok(obj) => {
+                            // Attempt to set the variable to the calculated value
+                            if let Err(e) =  self.env.set_variable(&var.0, obj, None) {
+                                return Some(InterpreterError::EnvironmentError(e));
+                            }
+                        }
+                        Err(_)  => okay = false
+                    }
+                }
+
+                "to_float" => {
+                    match type_methods::as_float(var.1) {
+                        Ok(obj) => {
+                            // Attempt to set the variable to the calculated value
+                            if let Err(e) =  self.env.set_variable(&var.0, obj, None) {
+                                return Some(InterpreterError::EnvironmentError(e));
+                            }
+                        }
+                        Err(_)  => okay = false
+                    }
+                }
+
+                "to_string" => {
+                    match type_methods::as_string(var.1) {
+                        Ok(obj) => {
+                            // Attempt to set the variable to the calculated value
+                            if let Err(e) =  self.env.set_variable(&var.0, obj, None) {
+                                return Some(InterpreterError::EnvironmentError(e));
+                            }
+                        }
+                        Err(_)  => okay = false
+                    }
+                }
+
+                _ => {
+                    return Some(InterpreterError::EnvironmentError(EnvError::UnknownMethod(function)));
+                }
+            }
+
+            if !okay {
+                return Some(InterpreterError::EnvironmentError(EnvError::ConversionError("Unable to perform variable type conversion")))
+            }
+        }
+        return None;
     }
 
     //  Perform an access

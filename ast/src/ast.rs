@@ -17,6 +17,7 @@ pub enum Expr {
     Real(Float),
     String(String),
     Variable(String),
+    Modifier(String, Vec<String>),
     Op(Box<Expr>, Opcode, Box<Expr>),
     UnaryOp(Box<Expr>, UnaryOpcode),
     Access(Box<Expr>, Accessors, Box<MemberMethod>),
@@ -61,4 +62,3 @@ pub struct MemberMethod {
     pub method: String,
     pub params: Vec<Box<Expr>>
 }
-

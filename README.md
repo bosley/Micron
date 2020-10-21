@@ -82,6 +82,30 @@ String(MString { value: "3" })
 
 ```
 
+**Built in Functions**
+
+|  Function  |  Params           |  In Expression? |   Applicable Types
+|--          |--                 |--               |--
+|  to_int    | existing var name |       No        |    Integer, Float, String
+|  to_float  | existing var name |       No        |    Integer, Float, String
+|  to_string | existing var name |       No        |    Integer, Float, String
+
+_
+
+Built in functions must be prefixed by a '$'. 
+
+Example output:
+```
+>> let a = 3;
+>> a
+Integer(MInteger { value: 3 })
+>> $to_string(a)
+String(MString { value: "Modifications Complete" })
+>> a
+String(MString { value: "3" })
+>> 
+
+```
 **Operations**
 
 Current operations are bellow and aim to follow the [C++ operation precedence](https://en.cppreference.com/w/cpp/language/operator_precedence).
