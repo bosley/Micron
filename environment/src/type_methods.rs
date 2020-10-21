@@ -1,5 +1,5 @@
 
-use crate::types::{MInteger, MFloat, MString, MDict,AsMicronType, DictItem, FromRug};
+use crate::types::{MInteger, MFloat, MString, AsMicronType, FromRug};
 use crate::object::Object;
 use crate::error::EnvError;
 
@@ -17,11 +17,6 @@ pub fn at_string(item: Object, idx: MInteger)-> Result<Object, EnvError> {
             return Err(EnvError::NoMethodForType("Float", "at_string"));
         }
         Object::String(s) => {
-
-            //let mut n = MFloat::from_rug_float(f.get_value());
-            //n.set_precision(converted_prec.unwrap() as usize);
-            //return Ok(Object::Float(n));
-
             if converted_idx.unwrap() > s.get_value().len() as i64 {
                 return Err(EnvError::InvalidParameter("Given index is out of range"));
             }
