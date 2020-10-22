@@ -3,7 +3,15 @@ use rug;
 use rug::Assign;
 
 use micron_ast::{
-    Expr, Opcode, UnaryOpcode, Statement, FLOAT_PRECISION, Accessors, MemberMethod
+    Expr, 
+    Opcode, 
+    UnaryOpcode, 
+    Statement, 
+    FLOAT_PRECISION, 
+    Accessors, 
+    MemberMethod, 
+    DictEntry,
+    DictAccessType
 };
 
 grammar;
@@ -18,13 +26,13 @@ pub Program: Vec<Box<Statement>> = {
 Statements: Box<Statement> = {
 
     <a:AssignmentStatement> => a,
-    <b:BareExpressionStatement> => b
+    <b:BareExpressionStatement> => b,
 }
 
 // Assignment statement 
 AssignmentStatement: Box<Statement> = {
 
-    "let" <v:Variable> "=" <e:Expr> ";"   => Box::new(Statement::Assignment(v,e)),
+    <v:Variable> "=" <e:Expr>   => Box::new(Statement::Assignment(v, e)),
 }
 
 // Bare Expression
@@ -77,12 +85,35 @@ FactorOp: Opcode = {
 };
 
 Term: Box<Expr> = {
-    Integer => Box::new(Expr::Number(<>)),
-    Float   => Box::new(Expr::Real(<>)),
-    Variable => Box::new(Expr::Variable(<>)),
-    String   => Box::new(Expr::String(<>)),
+    Integer   => Box::new(Expr::Number(<>)),
+    Float     => Box::new(Expr::Real(<>)),
+    VarTerm,
+    DictTerm,
+    String    => Box::new(Expr::String(<>)),
     "(" <Expr> ")",
 };
+
+VarTerm: Box<Expr> = {
+    Variable  => Box::new(Expr::Variable(<>)),
+    <v:Variable> <d:DictAccessor+> => Box::new(Expr::VarDict(v, d))
+}
+
+DictAccessor: DictAccessType = {
+    "[" <k:DictKey> "]"  => DictAccessType::RawValue(k),
+    "[" <v:Variable> "]" => DictAccessType::Variable(v)
+}
+
+DictTerm: Box<Expr> = {
+    "{" "}" => Box::new(Expr::Dict(Vec::new())),
+    "{" <v:Multiples<",", DictionaryEntry>> "}" => Box::new(Expr::Dict(v))
+}
+
+DictionaryEntry: Box<DictEntry> = {
+    <s:DictKey> ":" <e:Expr> => Box::new(DictEntry{
+                                        key: s,
+                                        value: e
+                                    })
+}
 
 Method: Box<MemberMethod> = {
     <f:Function> "(" ")" => Box::new(MemberMethod{
@@ -96,12 +127,12 @@ Method: Box<MemberMethod> = {
 }
 
 CallParams: Vec<Box<Expr>> = {
-    <v:Comma<Expr>> => <>
+    <v:Multiples<",", Expr>> => <>
 }
 
 BuiltInFunction: Box<Expr> = {
 
-    "$" <f:Function> "(" <v:Comma<Variable>> ")" => Box::new(Expr::Modifier(f, v))
+    "$" <f:Function> "(" <v:Multiples<",", Variable>> ")" => Box::new(Expr::Modifier(f, v))
 }
 
 Integer: rug::Integer = {
@@ -123,7 +154,7 @@ Float: rug::Float = {
 }
 
 String: String = {
-    r#""([^"\\]|\\[0nrt"\\])*""# => String::from(<>)
+    r#""([^"\\]|\\[0nrt"\\])*""# => String::from(<>.trim_matches('"'))
 }
 
 Function: String = {
@@ -134,8 +165,13 @@ Variable: String = {
     r"[a-zA-Z_]+([0-9]+)?" => String::from_str(<>).unwrap()
 };
 
-Comma<T>: Vec<T> = {
-    <v:(<T> ",")*> <e:T> => {
+DictKey: String = {
+    r"'[a-zA-Z_]+([0-9]+)?'"=> String::from_str(<>.trim_matches('\'')).unwrap()
+}
+
+// Get multiples of types sep by string 'V' 
+Multiples<V, T>: Vec<T> = {
+    <v:(<T> V)*> <e:T> => {
         let mut v = v;
         v.push(e);
         v

@@ -4,15 +4,28 @@ use std::convert::TryFrom;
 
 use rug::{Integer, Float, ops::Pow};
 
-use micron_ast::{ Expr, Opcode, UnaryOpcode, FLOAT_PRECISION, Accessors, MemberMethod};
+use micron_ast::{ 
+    Expr, 
+    Opcode, 
+    UnaryOpcode, 
+    FLOAT_PRECISION, 
+    Accessors, 
+    MemberMethod,
+    DictAccessType
+};
+
 use micron_environment::{ 
     MicronEnv, 
     EnvError,
-    object::Object, 
+    object::{
+        Object,
+        object_to_dict_item
+    },
     types::{
         MInteger,
         MFloat,
         MString,
+        MDict,
         FromRug,
         AsMicronType
     },
@@ -83,10 +96,8 @@ impl <'a> ExpressionCalculator <'a> {
             //
             Expr::String(item) => {
 
-                let actual_string = item.as_str().trim_matches('"');
-
                 self.calculation_stack.push(
-                    Object::String(MString::new(actual_string.to_string()))
+                    Object::String(MString::new(item.to_string()))
                 );
             }
 
@@ -104,6 +115,108 @@ impl <'a> ExpressionCalculator <'a> {
 
                     Err(e) => {
                         return Err(InterpreterError::EnvironmentError(e));
+                    }
+                }
+            }
+
+            //  Load a dict
+            //
+            Expr::Dict(values) => {
+
+                let mut new_dict : MDict = MDict::new();
+
+                for value in values {
+
+                    // Evaluate the expression for the value of the dict
+                    if let Err(e) = self.run_expression(*value.value) {
+                        return Err(e);
+                    }
+
+                    // Get the value
+                    let calculated_value = match self.calculation_stack.pop() {
+                        Some(n) => { n }
+                        None => { return Err(InterpreterError::StackError); }
+                    };
+
+                    new_dict.set_item(
+                        MString::new(value.key.clone()), 
+                        object_to_dict_item(calculated_value)
+                    );
+                }
+
+                self.calculation_stack.push(
+                    Object::Dict(new_dict)
+                );
+            }
+
+            Expr::VarDict(var, keys) => {
+
+                // Get the thing we suspect is a dictionary
+                match self.env.get_variable(MString::new(var.clone()), None) {
+                    Ok(v) => {
+                        self.calculation_stack.push(
+                            v
+                        );
+                    }
+
+                    Err(e) => {
+                        return Err(InterpreterError::EnvironmentError(e));
+                    }
+                };
+
+                // For all keys that might exist i.e : my_dict['some_key']['nested_key']
+                for key in keys {
+                    let key = match key {
+                        DictAccessType::RawValue(s) => { s }
+                        DictAccessType::Variable(v) => {
+                            match self.env.get_variable(MString::new(v.clone()), None) {
+                                Ok(v) => { 
+                                    match v {
+                                        Object::String(s) => s.get_value(),
+                                        _ => {
+                                            return Err(InterpreterError::EnvironmentError(
+                                                EnvError::IncorrectType("Accessor for dictionary must be a string")));
+                                        }
+                                    }
+                                 }
+                                Err(e) => {
+                                    return Err(InterpreterError::EnvironmentError(e));
+                                }
+                            }
+                        }
+                    };
+
+                    // Get the suspected dictionary to access
+                    let suspect = match self.calculation_stack.pop() {
+                        Some(n) => { n }
+                        None => { return Err(InterpreterError::StackError); }
+                    };
+
+                    // Ensure the item is a dictionary
+                    match suspect {
+                        Object::Dict(mut d) => {
+
+                            // Attempt to get item as an object from the dict
+                            match d.get_item_as_object(MString::new(key)) {
+                                Ok(v) => {
+
+                                    self.calculation_stack.push(
+                                        v
+                                    );
+                                }
+
+                                Err(e) => {
+                                    return Err(InterpreterError::EnvironmentError(e));
+                                }
+                            }
+                        }
+
+                        // Item isn't a dict
+                        _ => {
+                            return Err(InterpreterError::EnvironmentError(
+                                EnvError::IncorrectType("Can not access item with [<value>]")
+                            ));
+                        }
                     }
                 }
             }
