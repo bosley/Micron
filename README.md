@@ -27,7 +27,7 @@ Integer(MInteger { value: 462068072803536855906378252728602401551029028414946485
 Variables can be assigned with the 'let' keyword. 
 
 ```
-    let <variable> = <expression>;
+     <variable> = <expression>
 ```
 
 **Expressions**
@@ -50,9 +50,9 @@ a + 3 * 2
 
 Examples:
 ```
-    let a = (3.14).with_precision(10);
-    let b = "4".as_int();
-    let c = a.as_string();
+    a = (3.14).with_precision(10)
+    b = "4".as_int()
+    c = a.as_string()
 ```
 
 These data methods copy and convert data in-place and do not update the item it references. For instance, the line setting variable "c" sets "c" to the string representation of "a" and does not convert "a" to string. 
@@ -71,7 +71,7 @@ Built in functions must be prefixed by a '$'. These methods can not be in an exp
 
 Example output:
 ```
->> let a = 3;
+>> a = 3
 >> a
 Integer(MInteger { value: 3 })
 >> $to_string(a)
@@ -96,7 +96,7 @@ Built in functions must be prefixed by a '$'.
 
 Example output:
 ```
->> let a = 3;
+>> a = 3
 >> a
 Integer(MInteger { value: 3 })
 >> $to_string(a)
@@ -106,6 +106,22 @@ String(MString { value: "3" })
 >> 
 
 ```
+
+**Dictionaries**
+
+```
+
+<var> = {
+    '<key>': <expr>,
+    '<key1>': <expr>
+}
+
+<var>['key']
+
+<var>[<var>]    // Where the [<var>] must be a string
+
+```
+
 **Operations**
 
 Current operations are bellow and aim to follow the [C++ operation precedence](https://en.cppreference.com/w/cpp/language/operator_precedence).
