@@ -1,15 +1,14 @@
 
-
-extern crate micron_environment;
-extern crate micron_interpreter;
+/*
+extern crate micron_engine;
 extern crate micron_parser;
 
-use micron_environment::MicronEnv;
+use micron_engine::MicronEnv;
 use micron_interpreter::MicronInterpreter;
 
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
-
+*/
 fn main() {
    repl();
 }
@@ -29,7 +28,7 @@ fn repl_banner() {
 fn repl() {
 
     repl_banner();
-
+/*
     let mut env  = MicronEnv::new();
     let mut interpreter = MicronInterpreter::new(&mut env);
 
@@ -79,4 +78,5 @@ fn repl() {
         }
     }
     rl.save_history("repl-history.txt").unwrap();
+    */
 }
