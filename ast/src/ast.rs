@@ -27,7 +27,7 @@ pub enum Expr {
     Dict(Vec<Box<DictEntry>>),
 
     // Variable, Key
-    VarDict(String, String),
+    VarDict(String, Vec<String>),
 }
 
 #[derive(Debug, Clone)]

@@ -33,6 +33,6 @@ pub enum EnvError {
     #[display(fmt = "Dictionary does not contain key {}", _0)]
     UnknownKeyForDict(String),
 
-    #[display(fmt = "Incorrect type {}, message : {}", _0, _1)]
-    IncorrectType(String, &'static str),
+    #[display(fmt = "Incorrect type : {}", _0)]
+    IncorrectType(&'static str),
 }

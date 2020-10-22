@@ -88,7 +88,11 @@ Term: Box<Expr> = {
 VarTerm: Box<Expr> = {
 
     Variable  => Box::new(Expr::Variable(<>)),
-    <v:Variable> "[" <k:String> "]" => Box::new(Expr::VarDict(v, k))
+    <v:Variable> <d:DictAccessor+> => Box::new(Expr::VarDict(v, d))
+}
+
+DictAccessor: String = {
+    "[" <k:DictKey> "]" => k
 }
 
 DictTerm: Box<Expr> = {
@@ -154,6 +158,10 @@ Function: String = {
 Variable: String = {
     r"[a-zA-Z_]+([0-9]+)?" => String::from_str(<>).unwrap()
 };
+
+DictKey: String = {
+    r"'[a-zA-Z_]+([0-9]+)?'"=> String::from_str(<>.trim_matches('\'')).unwrap()
+}
 
 // Get multiples of types sep by string 'V' 
 Multiples<V, T>: Vec<T> = {

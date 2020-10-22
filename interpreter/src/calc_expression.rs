@@ -140,12 +140,14 @@ impl <'a> ExpressionCalculator <'a> {
                 );
             }
 
-            Expr::VarDict(var, key) => {
+            Expr::VarDict(var, keys) => {
 
                 // Get the thing we suspect is a dictionary
-                let suspect = match self.env.get_variable(MString::new(var.clone()), None) {
+                match self.env.get_variable(MString::new(var.clone()), None) {
                     Ok(v) => {
-                        v
+                        self.calculation_stack.push(
+                            v
+                        );
                     }
 
                     Err(e) => {
@@ -153,30 +155,39 @@ impl <'a> ExpressionCalculator <'a> {
                     }
                 };
 
-                // Ensure the item is a dictionary
-                match suspect {
-                    Object::Dict(mut d) => {
+                for key in keys {
 
-                        // Attempt to get item as an object from the dict
-                        match d.get_item_as_object(MString::new(key)) {
-                            Ok(v) => {
+                    // Get the suspected dictionary to access
+                    let suspect = match self.calculation_stack.pop() {
+                        Some(n) => { n }
+                        None => { return Err(InterpreterError::StackError); }
+                    };
 
-                                self.calculation_stack.push(
-                                    v
-                                );
-                            }
+                    // Ensure the item is a dictionary
+                    match suspect {
+                        Object::Dict(mut d) => {
 
-                            Err(e) => {
-                                return Err(InterpreterError::EnvironmentError(e));
+                            // Attempt to get item as an object from the dict
+                            match d.get_item_as_object(MString::new(key)) {
+                                Ok(v) => {
+
+                                    self.calculation_stack.push(
+                                        v
+                                    );
+                                }
+
+                                Err(e) => {
+                                    return Err(InterpreterError::EnvironmentError(e));
+                                }
                             }
                         }
-                    }
 
-                    // Item isn't a dict
-                    _ => {
-                        return Err(InterpreterError::EnvironmentError(
-                            EnvError::IncorrectType(var, "Item is not a dictionary")
-                        ));
+                        // Item isn't a dict
+                        _ => {
+                            return Err(InterpreterError::EnvironmentError(
+                                EnvError::IncorrectType("Can not access item with [<value>]")
+                            ));
+                        }
                     }
                 }
             }
