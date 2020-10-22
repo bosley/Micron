@@ -4,7 +4,16 @@ use std::convert::TryFrom;
 
 use rug::{Integer, Float, ops::Pow};
 
-use micron_ast::{ Expr, Opcode, UnaryOpcode, FLOAT_PRECISION, Accessors, MemberMethod};
+use micron_ast::{ 
+    Expr, 
+    Opcode, 
+    UnaryOpcode, 
+    FLOAT_PRECISION, 
+    Accessors, 
+    MemberMethod,
+    DictAccessType
+};
+
 use micron_environment::{ 
     MicronEnv, 
     EnvError,
@@ -155,7 +164,27 @@ impl <'a> ExpressionCalculator <'a> {
                     }
                 };
 
+                // For all keys that might exist i.e : my_dict['some_key']['nested_key']
                 for key in keys {
+                    let key = match key {
+                        DictAccessType::RawValue(s) => { s }
+                        DictAccessType::Variable(v) => {
+                            match self.env.get_variable(MString::new(v.clone()), None) {
+                                Ok(v) => { 
+                                    match v {
+                                        Object::String(s) => s.get_value(),
+                                        _ => {
+                                            return Err(InterpreterError::EnvironmentError(
+                                                EnvError::IncorrectType("Accessor for dictionary must be a string")));
+                                        }
+                                    }
+                                 }
+                                Err(e) => {
+                                    return Err(InterpreterError::EnvironmentError(e));
+                                }
+                            }
+                        }
+                    };
 
                     // Get the suspected dictionary to access
                     let suspect = match self.calculation_stack.pop() {

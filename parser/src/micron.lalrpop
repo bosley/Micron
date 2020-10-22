@@ -3,7 +3,15 @@ use rug;
 use rug::Assign;
 
 use micron_ast::{
-    Expr, Opcode, UnaryOpcode, Statement, FLOAT_PRECISION, Accessors, MemberMethod, DictEntry
+    Expr, 
+    Opcode, 
+    UnaryOpcode, 
+    Statement, 
+    FLOAT_PRECISION, 
+    Accessors, 
+    MemberMethod, 
+    DictEntry,
+    DictAccessType
 };
 
 grammar;
@@ -86,24 +94,22 @@ Term: Box<Expr> = {
 };
 
 VarTerm: Box<Expr> = {
-
     Variable  => Box::new(Expr::Variable(<>)),
     <v:Variable> <d:DictAccessor+> => Box::new(Expr::VarDict(v, d))
 }
 
-DictAccessor: String = {
-    "[" <k:DictKey> "]" => k
+DictAccessor: DictAccessType = {
+    "[" <k:DictKey> "]"  => DictAccessType::RawValue(k),
+    "[" <v:Variable> "]" => DictAccessType::Variable(v)
 }
 
 DictTerm: Box<Expr> = {
-
     "{" "}" => Box::new(Expr::Dict(Vec::new())),
     "{" <v:Multiples<",", DictionaryEntry>> "}" => Box::new(Expr::Dict(v))
 }
 
 DictionaryEntry: Box<DictEntry> = {
-
-    <s:String> ":" <e:Expr> => Box::new(DictEntry{
+    <s:DictKey> ":" <e:Expr> => Box::new(DictEntry{
                                         key: s,
                                         value: e
                                     })

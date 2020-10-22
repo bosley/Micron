@@ -27,7 +27,13 @@ pub enum Expr {
     Dict(Vec<Box<DictEntry>>),
 
     // Variable, Key
-    VarDict(String, Vec<String>),
+    VarDict(String, Vec<DictAccessType>),
+}
+
+#[derive(Debug, Clone)]
+pub enum DictAccessType {
+    RawValue(String),
+    Variable(String)
 }
 
 #[derive(Debug, Clone)]
