@@ -7,3 +7,4 @@ mod engine;
 pub use engine::Engine;
 
 mod error;
+pub use error::ExecutionError;

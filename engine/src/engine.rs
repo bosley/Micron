@@ -1,7 +1,7 @@
 
 extern crate micron_ast;
 
-use micron_ast::{ Statement, Expr };
+use micron_ast::{ Statement, Expr, VariableType, DictAccessType};
 use crate::types::{ Dictionary, Record, RecordData };
 use crate::error::ExecutionError;
 
@@ -68,14 +68,79 @@ impl Engine {
         self.current_scope().set(key, record);
     }
 
+    fn get_record_by_var_type(&self, var_type: VariableType) -> Option<Record> {
+
+        match var_type {
+            VariableType::Singular(var_name) => {
+
+                return self.get_record(&var_name);
+            }
+
+            VariableType::Nested(var_name, accessor) => {
+                for item in accessor.iter() {
+                    match item {
+                        DictAccessType::RawValue(string_key) => {
+    
+                            let value = match self.get_record(&var_name) {
+    
+                                Some(existing_variable) => {
+                                    
+                                    if accessor.len() == 0 {
+
+                                        // We have the final item
+                                    } 
+                                    else 
+                                    {
+                                        // We aren't at the end, so we clone the accessors
+                                        // pop the front, and recurse
+                                        let mut next_search_vector = accessor.clone();
+                                        next_search_vector.pop_front();
+                                        return self.get_record_by_var_type(VariableType::Nested(var_name, next_search_vector));
+                                    }
+                                    
+                                }
+    
+                                None => { return None; }
+                            };
+
+                            return None;
+    
+                        }
+    
+                        DictAccessType::Variable(var_key) => {
+                            return None;
+                        }
+                    }
+                }
+            }
+        }
+
+        None
+    }
+
     /// Execute an AST statement
-    pub fn execute_statement(statement: Statement) -> Option<ExecutionError> {
+    pub fn execute_statement(&mut self, statement: Statement) -> Option<ExecutionError> {
 
         /*
 
             Match the statement and do what it asks
         
         */
+        match statement {
+
+            Statement::Assignment(var_type, expr) => {
+
+                panic!("{:?} | {:?}", var_type, expr);
+
+
+
+                }
+
+            Statement::BareExpression(expr) => {
+
+                panic!("{:?}", expr);
+            }
+        }
 
         None
     }
