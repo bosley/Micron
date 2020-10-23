@@ -1,8 +1,10 @@
 
 extern crate micron_ast;
 
+use std::{ cell::RefCell, rc::Rc };
+
 use micron_ast::{ Statement, Expr, VariableType, DictAccessType};
-use crate::types::{ Dictionary, Record, RecordData };
+use crate::types::{ Dictionary, RecordData };
 use crate::error::ExecutionError;
 
 /// The Micron Engine 
@@ -11,7 +13,7 @@ pub struct Engine {
 
     /// Stored data
     scopes: Vec<Dictionary>,
-    op_stack: Vec<Record>
+    op_stack: Vec<Rc<RefCell<RecordData>>>
 }
 
 impl Engine {
@@ -36,7 +38,7 @@ impl Engine {
 
     /// Get a record - Traverses scopes in reverse in an attempt
     /// to find the requested record. The first one found will be returned
-    fn get_record(&self, key: &String) -> Option<Record> {
+    fn get_record(&self, key: &String) -> Option<Rc<RefCell<RecordData>>> {
         for scope in self.scopes.iter().rev() {
             match scope.get(key) {
                 Some(record) => { return Some(record); }
@@ -68,7 +70,7 @@ impl Engine {
         self.current_scope().set(key, record);
     }
 
-    fn get_record_by_var_type(&self, var_type: VariableType) -> Option<Record> {
+    fn get_record_by_var_type(&self, var_type: VariableType) -> Option<Rc<RefCell<RecordData>>> {
 
         match var_type {
             VariableType::Singular(var_name) => {
@@ -85,18 +87,13 @@ impl Engine {
     
                                 Some(existing_variable) => {
                                     
-                                    if accessor.len() == 0 {
+                                    /*
+                                    
+                                        Here we need to get each ['item'] block from the list and load that current 
+                                        variable until we find the item we're looking for
+                                    */
 
-                                        // We have the final item
-                                    } 
-                                    else 
-                                    {
-                                        // We aren't at the end, so we clone the accessors
-                                        // pop the front, and recurse
-                                        let mut next_search_vector = accessor.clone();
-                                        next_search_vector.pop_front();
-                                        return self.get_record_by_var_type(VariableType::Nested(var_name, next_search_vector));
-                                    }
+                                    panic!("Not done");
                                     
                                 }
     
@@ -130,28 +127,132 @@ impl Engine {
 
             Statement::Assignment(var_type, expr) => {
 
-                panic!("{:?} | {:?}", var_type, expr);
 
+                match var_type {
+                    VariableType::Singular(var_name) => {
+
+                        match self.execute_expression(*expr) {
+
+                            Some(e) => { return Some(e); }
+
+                            None => {
+
+                                let value = match self.op_stack.pop() {
+                                    None => {
+                                        return Some(ExecutionError::StackError);
+                                    }
+
+                                    Some(val) => { val }
+                                };
+
+                                self.set_record(&var_name, value.borrow().clone());
+                            }
+                        }
+                    }
+
+                    VariableType::Nested(var, accessors) => {
+
+                        panic!("Nested variable assignment is not yet supported");
+                    }
+                }
 
 
                 }
 
             Statement::BareExpression(expr) => {
 
-                panic!("{:?}", expr);
+                // Execute the expression
+                match self.execute_expression(*expr) {
+
+                    Some(e) => { return Some(e); }
+
+                    None => {
+
+                        // Get the resulting expression
+                        let value = match self.op_stack.pop() {
+                            None => {
+                                return Some(ExecutionError::StackError);
+                            }
+
+                            Some(val) => { val.borrow().clone() }
+                        };
+
+                        // Print the value for now
+                        println!("{:?}", value);
+                    }
+                }
             }
         }
 
         None
     }
 
-    fn execute_expression(expresson: Expr) -> Option<ExecutionError> {
+    fn execute_expression(&mut self, expression: Expr) -> Option<ExecutionError> {
 
-        /*
-        
-            Recurse through an expression
-        
-        */
+        match expression {
+
+
+            Expr::Number(i) => {
+                self.op_stack.push(Rc::new(RefCell::new(RecordData::Integer(i))));
+                return None;
+            }
+
+            Expr::Real(f) => {
+                self.op_stack.push(Rc::new(RefCell::new(RecordData::Float(f))));
+                return None;
+            }
+
+            Expr::String(s) => {
+                self.op_stack.push(Rc::new(RefCell::new(RecordData::String(s))));
+                return None;
+            }
+
+            Expr::Variable(v) => {
+
+                // Get the variable from memory
+                match self.get_record_by_var_type(v) {
+                    Some(var) => {
+
+                        // If it exists stack it
+                        self.op_stack.push(var);
+                    }
+                    None => {
+                        
+                        // Otherwise its an error
+                        return Some(ExecutionError::UnknownVariable)
+                    }
+                };
+
+                // Get on out!
+                return None;
+            }
+
+            Expr::UnaryOp(op_expr, o) => {
+
+                panic!("Unary op not yet complete!");
+            }
+
+            Expr::Op(lhs_expr, op, rhs_expr) => {
+
+                panic!("Op not yet complete!");
+            }
+
+            Expr::Modifier(var, modifier) => {
+
+                panic!("Modifier not yet complete!");
+            }
+
+            Expr::Dict(dict_entries) => {
+
+                panic!("Dict Entries not yet complete!");
+            }
+
+            Expr::Access(access_expr, accessor, method) => {
+
+                panic!("Access not yet complete!");
+            }
+        }
+
 
         None
     }

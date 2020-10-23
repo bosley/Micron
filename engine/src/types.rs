@@ -1,4 +1,7 @@
-use rug::{Integer, Float, Assign};
+
+use std::{ cell::RefCell, rc::Rc };
+
+use rug::{Integer, Float};
 use std::collections::HashMap;
 
 /// Record of data
@@ -10,38 +13,10 @@ pub(crate) enum RecordData {
     Dict(Dictionary)
 }
 
-/// A single record
-#[derive(Debug, Clone)]
-pub(crate) struct Record {
-    name: String,
-    data: RecordData
-}
-
-impl Record {
-
-    /// Create a new record
-    pub(crate) fn new(name: String, record: RecordData) -> Self {
-        Self {
-            name: name,
-            data: record
-        }
-    }
-
-    /// Get record data
-    pub(crate) fn get_data(&self) -> RecordData {
-        return self.data.clone();
-    }
-
-    /// Get record name
-    pub(crate) fn get_name(&self) -> String {
-        return self.name.clone();
-    }
-}
-
 /// A dictionary of data
 #[derive(Debug, Clone)]
 pub(crate) struct Dictionary {
-    data: HashMap<String, Record>
+    data: HashMap<String, Rc<RefCell<RecordData>>>
 }
 
 impl Dictionary {
@@ -52,7 +27,7 @@ impl Dictionary {
     }
 
     /// Get a record
-    pub(crate) fn get(&self, key: &String) -> Option<Record> {
+    pub(crate) fn get(&self, key: &String) -> Option<Rc<RefCell<RecordData>>> {
         match self.data.get(key) {
             Some(record) => {
                 return Some(record.clone());
@@ -66,7 +41,7 @@ impl Dictionary {
     /// Set a record to record data
     pub(crate) fn set(&mut self, key: &String, value: RecordData) {
 
-        self.data.insert(key.clone(), Record::new(key.clone(), value));
+        self.data.insert(key.clone(), Rc::new(RefCell::new(value)));
     }
 }
 

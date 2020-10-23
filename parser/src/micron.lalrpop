@@ -1,4 +1,3 @@
-use std::collections::VecDeque;
 use std::str::FromStr;
 use rug;
 use rug::Assign;
@@ -52,7 +51,7 @@ BareExpressionStatement: Box<Statement> = {
 
 VarTerm: VariableType = {
     Variable  => VariableType::Singular(<>),
-    <v:Variable> <d:DictAccessor+> => VariableType::Nested(v, VecDeque::from(d))
+    <v:Variable> <d:DictAccessor+> => VariableType::Nested(v, d)
 }
 
 
