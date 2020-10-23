@@ -72,6 +72,22 @@ impl Engine {
 
     fn get_record_by_var_type(&self, var_type: VariableType) -> Option<Rc<RefCell<RecordData>>> {
 
+        /*
+        
+                This isn't working the way I meant it to. 
+
+                Its updating the referenced item to the inner and changing it rather than changing 
+                what its referencing. This is not what we need.
+
+                We need to change what item its referencing, not change the referenced item its self. 
+
+                We could solve this by writing a helper method and making this recursive. Oof.
+        
+        
+        */
+
+        eprintln!("THIS IS NOT WORKING CORRECTLY");
+
         match var_type {
             VariableType::Singular(var_name) => {
 
@@ -79,40 +95,89 @@ impl Engine {
             }
 
             VariableType::Nested(var_name, accessor) => {
+
+                // First we get the top level variable
+                let top_level_variable = match self.get_record(&var_name) {
+                    Some(existing_variable) => {
+                        existing_variable
+                    }
+                    None => { return None; }
+                };
+
+                // For every item in the accessor list we drill into the dictionaries
                 for item in accessor.iter() {
-                    match item {
-                        DictAccessType::RawValue(string_key) => {
-    
-                            let value = match self.get_record(&var_name) {
-    
-                                Some(existing_variable) => {
-                                    
-                                    /*
-                                    
-                                        Here we need to get each ['item'] block from the list and load that current 
-                                        variable until we find the item we're looking for
-                                    */
 
-                                    panic!("Not done");
-                                    
+                    let top_level_val = top_level_variable.borrow().get_value();
+
+                    // Ensure the current item is a dictionary
+                    match top_level_val {
+                        RecordData::Dict(dictionary) => {
+
+                            // See what the accessor type is
+                            match item {
+
+                                // If its a raw string then we just have to get its item
+                                DictAccessType::RawValue(string_key) => {
+        
+                                    // Set the top level variable to its inner item
+                                    let new_value = match dictionary.get(&string_key) {
+                                        Some(val) => { val }
+                                        None => { 
+                                            eprintln!("Unable to find record for key '{}'", string_key);
+                                            return None 
+                                        }
+                                    };
+
+                                    top_level_variable.borrow_mut().update_value(new_value.borrow().clone());
                                 }
-    
-                                None => { return None; }
-                            };
+            
+                                // If its a variable we have to load the variable and ensure its a string first
+                                // once thats done we can update the item 
+                                DictAccessType::Variable(var_key) => {
 
-                            return None;
-    
+                                    let suspected_string_var = match self.get_record(&var_key) {
+                                        Some(val) => { val }
+                                        None => { 
+                                            eprintln!("Could not find string key '{}'", var_key);
+                                            return None 
+                                        }
+                                    };
+
+                                    let suspect_value = suspected_string_var.borrow().get_value();
+
+                                    match suspect_value {
+                                        RecordData::String(string_key) => {
+
+                                            // Set the top level variable to its inner item
+                                            let new_value = match dictionary.get(&string_key) {
+                                                Some(val) => { val }
+                                                None => { 
+                                                    eprintln!("Unable to find record for key '{}'", string_key);
+                                                    return None 
+                                                }
+                                            };
+
+                                            top_level_variable.borrow_mut().update_value(new_value.borrow().clone());
+                                        }
+
+                                        _ => {
+
+                                            eprintln!("Variable for dictionary key is not a string!");
+                                            return None;
+                                        }
+                                    }
+                                    return None;
+                                }
+                            }
                         }
-    
-                        DictAccessType::Variable(var_key) => {
+                        _ => {
                             return None;
                         }
                     }
                 }
+                return Some(top_level_variable);
             }
         }
-
-        None
     }
 
     /// Execute an AST statement
@@ -127,8 +192,10 @@ impl Engine {
 
             Statement::Assignment(var_type, expr) => {
 
+                // Clear operational stack just in case
+                self.op_stack.clear();
 
-                match var_type {
+                match var_type.clone() {
                     VariableType::Singular(var_name) => {
 
                         match self.execute_expression(*expr) {
@@ -150,7 +217,37 @@ impl Engine {
                         }
                     }
 
-                    VariableType::Nested(var, accessors) => {
+                    VariableType::Nested(_, _) => {
+
+                        match self.execute_expression(*expr) {
+
+                            Some(e) => { return Some(e); }
+
+                            None => {
+
+                                match self.op_stack.pop() {
+                                    None => {
+                                        return Some(ExecutionError::StackError);
+                                    }
+
+                                    Some(val) => { 
+
+                                        // Nested variables are expected to exist already
+                                        match self.get_record_by_var_type(var_type) {
+
+                                            Some(variable) => {
+                                                let mut lhs = variable.borrow_mut();
+                                                lhs.update_value(val.borrow().clone());
+                                            }
+                                            None => {
+                                                return Some(ExecutionError::UnknownVariable);
+                                            }
+                                        }
+                                     }
+                                }
+                            }
+                        }
+        
 
                         panic!("Nested variable assignment is not yet supported");
                     }
@@ -174,7 +271,7 @@ impl Engine {
                                 return Some(ExecutionError::StackError);
                             }
 
-                            Some(val) => { val.borrow().clone() }
+                            Some(val) => { val.borrow().get_value() }
                         };
 
                         // Print the value for now
@@ -193,22 +290,29 @@ impl Engine {
 
 
             Expr::Number(i) => {
+                println!("Pushing number");
+
                 self.op_stack.push(Rc::new(RefCell::new(RecordData::Integer(i))));
                 return None;
             }
 
             Expr::Real(f) => {
+                println!("Pushing real");
+                
                 self.op_stack.push(Rc::new(RefCell::new(RecordData::Float(f))));
                 return None;
             }
 
             Expr::String(s) => {
+                println!("Pushing string");
+                
                 self.op_stack.push(Rc::new(RefCell::new(RecordData::String(s))));
                 return None;
             }
 
             Expr::Variable(v) => {
-
+                println!("Pushing variable");
+                
                 // Get the variable from memory
                 match self.get_record_by_var_type(v) {
                     Some(var) => {
@@ -242,11 +346,37 @@ impl Engine {
                 panic!("Modifier not yet complete!");
             }
 
+            //  Create a new dictionary
+            //
             Expr::Dict(dict_entries) => {
 
-                panic!("Dict Entries not yet complete!");
+                println!("In dict entry");
+
+                let mut new_dict = Dictionary::new();
+
+                for entry in dict_entries {
+                    match self.execute_expression(*entry.value) {
+                        Some(e) => return Some(e),
+                        None => {
+                            match self.op_stack.pop() {
+                                None => {
+                                    eprintln!("Unable to get variable from stack to set item");
+                                    return Some(ExecutionError::StackError);
+                                }
+                                Some(val) => { 
+                                    new_dict.set(&entry.key, val.borrow().get_value());
+                                }
+                            }
+                        }
+                    }
+                }
+
+                self.op_stack.push(Rc::new(RefCell::new(RecordData::Dict(new_dict))));
+                return None;
             }
 
+            //  Accessor
+            //
             Expr::Access(access_expr, accessor, method) => {
 
                 panic!("Access not yet complete!");

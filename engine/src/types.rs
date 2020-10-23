@@ -13,6 +13,24 @@ pub(crate) enum RecordData {
     Dict(Dictionary)
 }
 
+/// Helper functions for record data
+impl RecordData {
+
+    /// Update the value of the record data object to something else
+    pub(crate) fn update_value(&mut self, other: RecordData) {
+        *self = other.clone()
+    }
+
+    pub(crate) fn get_value(&self) -> RecordData {
+        match &*self {
+            RecordData::Integer(v) => RecordData::Integer(v.clone()),
+            RecordData::Float(v)   => RecordData::Float(v.clone()),
+            RecordData::String(v)  => RecordData::String(v.clone()),
+            RecordData::Dict(v)    => RecordData::Dict(v.clone())
+        }
+    }
+}
+
 /// A dictionary of data
 #[derive(Debug, Clone)]
 pub(crate) struct Dictionary {
