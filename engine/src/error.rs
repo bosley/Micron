@@ -5,5 +5,11 @@ use derive_more::Display;
 pub enum ExecutionError {
 
     StackError,
-    UnknownVariable
+    UnknownVariable,
+
+    #[display(fmt = "Unknown built in function {} ", _0)]
+    UnknownBuiltInFunction(String),
+
+    #[display(fmt = "Conversion failure arose from {} | {}", _0, _1)]
+    ConversionFailure(String, String)
 }

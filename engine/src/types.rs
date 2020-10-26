@@ -1,7 +1,7 @@
 
 use std::{ cell::RefCell, rc::Rc };
 
-use rug::{Integer, Float};
+use rug::{Integer, Float, Assign};
 use std::collections::HashMap;
 
 /// Record of data
@@ -27,6 +27,97 @@ impl RecordData {
             RecordData::Float(v)   => RecordData::Float(v.clone()),
             RecordData::String(v)  => RecordData::String(v.clone()),
             RecordData::Dict(v)    => RecordData::Dict(v.clone())
+        }
+    }
+
+    pub(crate) fn to_string(&mut self) -> Option<RecordData> {
+        match &*self {
+            RecordData::Integer(v) => {
+                Some(RecordData::String(String::from(v.to_string_radix(10))))
+            }
+
+            RecordData::Float(v)   => {
+
+                // TODO:  Need to set precision in the Some() here to be configurable 
+                //
+                Some(RecordData::String(v.to_string_radix(10, Some(52))))
+            }
+
+            RecordData::String(v)  => {
+                 Some(RecordData::String(v.clone()))
+            }
+
+            RecordData::Dict(v)    => {
+
+                Some(RecordData::String(format!("{:?}", v)))
+            }
+        }
+    }
+
+    pub(crate) fn to_int(&mut self) -> Option<RecordData> {
+
+        match &*self {
+            RecordData::Integer(v) => {
+                Some(RecordData::Integer(v.clone()))
+            }
+
+            RecordData::Float(v)   => {
+
+                match v.to_integer() {
+                    Some(v_int) => { Some(RecordData::Integer(v_int)) }
+                    None => None 
+                }
+            }
+
+            RecordData::String(v)  => {
+
+                let i_val = v.parse::<i64>();
+
+                if i_val.is_err() {
+                    return None;
+                }
+
+                Some(RecordData::Integer(Integer::from(i_val.unwrap())))
+            }
+
+            RecordData::Dict(_)    => {
+
+                None
+            }
+        }
+    }
+
+    pub(crate) fn to_float(&mut self) -> Option<RecordData> {
+
+        match &*self {
+            RecordData::Integer(v) => {
+
+                let mut f_v = Float::new(53);
+                f_v.assign(v);
+
+                Some(RecordData::Float( f_v ))
+            }
+
+            RecordData::Float(v)   => {
+
+                Some(RecordData::Float(v.clone()))
+            }
+
+            RecordData::String(v)  => {
+
+                let i_val = v.parse::<i64>();
+
+                if i_val.is_err() {
+                    return None;
+                }
+
+                Some(RecordData::Integer(Integer::from(i_val.unwrap())))
+            }
+
+            RecordData::Dict(_)    => {
+
+                None
+            }
         }
     }
 }

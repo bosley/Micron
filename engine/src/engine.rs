@@ -70,6 +70,8 @@ impl Engine {
         self.current_scope().set(key, record);
     }
 
+    /// Get a record from the operational dictionary if it exists by the Variable Type (Singular v.s Nested)
+    /// This will return an editable value
     fn get_record_by_var_type(&self, var_type: VariableType) -> Option<Rc<RefCell<RecordData>>> {
 
         match var_type {
@@ -179,6 +181,8 @@ impl Engine {
                 self.op_stack.clear();
 
                 match var_type.clone() {
+
+                    // Assign a simple singular variable i.e   a = 3;
                     VariableType::Singular(var_name) => {
 
                         match self.execute_expression(*expr) {
@@ -200,6 +204,7 @@ impl Engine {
                         }
                     }
 
+                    // Assign a more complicated 'nested' variable i.e  a['key_1']['key_2'] = "Some value"
                     VariableType::Nested(_, _) => {
 
                         match self.execute_expression(*expr) {
@@ -230,14 +235,9 @@ impl Engine {
                                 }
                             }
                         }
-        
-
-                        panic!("Nested variable assignment is not yet supported");
                     }
                 }
-
-
-                }
+            }
 
             Statement::BareExpression(expr) => {
 
@@ -267,35 +267,123 @@ impl Engine {
         None
     }
 
+    /// Process a modification 
+    fn process_modifier(&mut self, modifier_function: String, variables: Vec<VariableType>) -> Option<ExecutionError> {
+
+        println!("Modifier : {} | Variables : {:?}", modifier_function, variables);
+
+        match modifier_function.as_str() {
+
+            "to_string" => {
+                
+                for v in variables {
+
+                    // Get the variable from memory
+                    match self.get_record_by_var_type(v) {
+                        Some(var) => {
+                            let mut var_item = var.borrow_mut();
+                            match var_item.to_string() {
+                                Some(v) => { var_item.update_value(v) }
+                                None    => { return Some(ExecutionError::ConversionFailure(modifier_function, "Convert item to string".to_string())) }
+                            }
+                        }
+                        None => {
+                            
+                            // Otherwise its an error
+                            return Some(ExecutionError::UnknownVariable)
+                        }
+                    };
+                }
+                
+                self.op_stack.push(Rc::new(RefCell::new(
+                    RecordData::Integer(rug::Integer::from(1))
+                )));
+                return None;
+            }
+
+            "to_int" => {
+
+                for v in variables {
+
+                    // Get the variable from memory
+                    match self.get_record_by_var_type(v) {
+                        Some(var) => {
+                            let mut var_item = var.borrow_mut();
+                            match var_item.to_int() {
+                                Some(v) => { var_item.update_value(v) }
+                                None    => { return Some(ExecutionError::ConversionFailure(modifier_function, "Convert item to string".to_string())) }
+                            }
+                        }
+                        None => {
+                            
+                            // Otherwise its an error
+                            return Some(ExecutionError::UnknownVariable)
+                        }
+                    };
+                }
+                
+                self.op_stack.push(Rc::new(RefCell::new(
+                    RecordData::Integer(rug::Integer::from(1))
+                )));
+                return None;
+            }
+
+            "to_float" => {
+
+                for v in variables {
+
+                    // Get the variable from memory
+                    match self.get_record_by_var_type(v) {
+                        Some(var) => {
+                            let mut var_item = var.borrow_mut();
+                            match var_item.to_float() {
+                                Some(v) => { var_item.update_value(v) }
+                                None    => { return Some(ExecutionError::ConversionFailure(modifier_function, "Convert item to string".to_string())) }
+                            }
+                        }
+                        None => {
+                            
+                            // Otherwise its an error
+                            return Some(ExecutionError::UnknownVariable)
+                        }
+                    };
+                }
+                
+                self.op_stack.push(Rc::new(RefCell::new(
+                    RecordData::Integer(rug::Integer::from(1))
+                )));
+                return None;
+            }
+
+            _ => {
+                return Some(ExecutionError::UnknownBuiltInFunction(modifier_function));
+            }
+        }
+    }
+
+    /// Execute an actual expression 
     fn execute_expression(&mut self, expression: Expr) -> Option<ExecutionError> {
 
         match expression {
 
 
             Expr::Number(i) => {
-                println!("Pushing number");
-
                 self.op_stack.push(Rc::new(RefCell::new(RecordData::Integer(i))));
                 return None;
             }
 
             Expr::Real(f) => {
-                println!("Pushing real");
-                
                 self.op_stack.push(Rc::new(RefCell::new(RecordData::Float(f))));
                 return None;
             }
 
             Expr::String(s) => {
-                println!("Pushing string");
-                
                 self.op_stack.push(Rc::new(RefCell::new(RecordData::String(s))));
                 return None;
             }
 
             Expr::Variable(v) => {
-                println!("Pushing variable");
-                
+
                 // Get the variable from memory
                 match self.get_record_by_var_type(v) {
                     Some(var) => {
@@ -324,16 +412,16 @@ impl Engine {
                 panic!("Op not yet complete!");
             }
 
-            Expr::Modifier(var, modifier) => {
+            // Modify some variable(s) with a built in function
+            //
+            Expr::BuiltInModifierCall(modifier_function, variables) => {
 
-                panic!("Modifier not yet complete!");
+                return self.process_modifier(modifier_function, variables);
             }
 
             //  Create a new dictionary
             //
             Expr::Dict(dict_entries) => {
-
-                println!("In dict entry");
 
                 let mut new_dict = Dictionary::new();
 
