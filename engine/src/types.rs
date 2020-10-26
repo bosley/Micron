@@ -71,13 +71,15 @@ impl RecordData {
 
             RecordData::String(v)  => {
 
-                let i_val = v.parse::<i64>();
+                // Convert to float first so we can ensure the parse is 
+                // more likely to succeed
+                let i_val = v.parse::<f64>();
 
                 if i_val.is_err() {
                     return None;
                 }
 
-                Some(RecordData::Integer(Integer::from(i_val.unwrap())))
+                Some(RecordData::Integer(Integer::from(i_val.unwrap() as i64)))
             }
 
             RecordData::Dict(_)    => {
@@ -105,13 +107,13 @@ impl RecordData {
 
             RecordData::String(v)  => {
 
-                let i_val = v.parse::<i64>();
+                let i_val = v.parse::<f64>();
 
                 if i_val.is_err() {
                     return None;
                 }
 
-                Some(RecordData::Integer(Integer::from(i_val.unwrap())))
+                Some(RecordData::Float(Float::with_val(FLOAT_PRECISION, i_val.unwrap())))
             }
 
             RecordData::Dict(_)    => {
@@ -167,6 +169,16 @@ impl Dictionary {
     pub(crate) fn set(&mut self, key: &String, value: RecordData) {
 
         self.data.insert(key.clone(), Rc::new(RefCell::new(value)));
+    }
+
+    /// Attempt to remove a key
+    pub(crate) fn remove(&mut self, key: &String) -> bool {
+
+        if self.data.contains_key(key) {
+            self.data.remove_entry(key);
+            return true;
+        }
+        false
     }
 }
 

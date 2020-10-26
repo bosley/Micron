@@ -147,7 +147,7 @@ CallParams: Vec<Box<Expr>> = {
 
 BuiltInFunction: Box<Expr> = {
 
-    "$" <f:Function> "(" <v:Multiples<",", VarTerm>> ")" => Box::new(Expr::BuiltInModifierCall(f, v))
+    "#" <f:Function> "(" <v:Variable> ")" => Box::new(Expr::BuiltInModifierCall(f, v))
 }
 
 Integer: rug::Integer = {

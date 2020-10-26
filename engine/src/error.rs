@@ -15,5 +15,13 @@ pub enum ExecutionError {
 
 
     #[display(fmt = "Unknown method '{}' attempted to be accessed by accessor '{}'", _1, _0)]
-    UnknownVariableMethod(&'static str, String)
+    UnknownVariableMethod(&'static str, String),
+
+
+    #[display(fmt = "Invalid Operation: {}", _0)]
+    InvalidOperation(&'static str),
+
+    InvalidParameters,
+
+    IndexError
 }

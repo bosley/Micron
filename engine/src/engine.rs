@@ -1,26 +1,22 @@
 /*
 
         TODO : 
-
-            The execution of unary ops and opcodes needs to be copied over from the original implementation
-
             Certain accessors for variables aren't created (see the TODO in the perform_accessor method)
-
-            Built in function '$drop(Vec<Expr>)' needs to be added to grammar and the engine to delete things
-
-            Maybe merge in the $to_<type> built-ins into accessors "." because why not ? 
 
             String representation of dictionaries could be prettier
 */
 
 
-extern crate micron_ast;
-
+use std::convert::TryFrom;
+use rug::{Integer, Float, Assign, ops::Pow};
 use std::{ cell::RefCell, rc::Rc };
 
-use micron_ast::{ Statement, Expr, VariableType, DictAccessType, Accessors, MemberMethod};
+extern crate micron_ast;
+use micron_ast::{ Statement, Expr, VariableType, DictAccessType, Accessors, MemberMethod, UnaryOpcode, Opcode, RADIX, FLOAT_PRECISION};
+
 use crate::types::{ Dictionary, RecordData };
 use crate::error::ExecutionError;
+
 
 /// The Micron Engine 
 #[derive(Debug, Clone)]
@@ -83,6 +79,14 @@ impl Engine {
     fn set_record(&mut self, key: &String, record: RecordData) {
         
         self.current_scope().set(key, record);
+    }
+
+    /// Attempt to remove a variable
+    fn rm_record(&mut self, key: &String) -> Option<ExecutionError> {
+        match self.current_scope().remove(key) {
+            true => return None,
+            false => return Some(ExecutionError::UnknownVariable)
+        }
     }
 
     /// Get a record from the operational dictionary if it exists by the Variable Type (Singular v.s Nested)
@@ -373,107 +377,38 @@ impl Engine {
                 return self.perform_access(*access_expr, accessor, *method);
             }
 
-            Expr::UnaryOp(op_expr, o) => {
+            // Unary operation
+            //
+            Expr::UnaryOp(op_expr, op) => {
 
-                panic!("Unary op not yet complete!");
+                return self.perform_unary(*op_expr, op);
             }
 
+            // Operation
+            //
             Expr::Op(lhs_expr, op, rhs_expr) => {
 
-                panic!("Op not yet complete!");
+                return self.perform_opcode(*lhs_expr, *rhs_expr, op);
             }
         }
-
-
-        None
     }
 
     /// Process a modification 
-    fn process_modifier(&mut self, modifier_function: String, variables: Vec<VariableType>) -> Option<ExecutionError> {
-
-        println!("Modifier : {} | Variables : {:?}", modifier_function, variables);
+    fn process_modifier(&mut self, modifier_function: String, variable: String) -> Option<ExecutionError> {
 
         match modifier_function.as_str() {
 
-            "to_string" => {
-                
-                for v in variables {
+            "drop" => {
 
-                    // Get the variable from memory
-                    match self.get_record_by_var_type(v) {
-                        Some(var) => {
-                            let mut var_item = var.borrow_mut();
-                            match var_item.to_string() {
-                                Some(v) => { var_item.update_value(v) }
-                                None    => { return Some(ExecutionError::ConversionFailure(modifier_function, "Convert item to string".to_string())) }
-                            }
-                        }
-                        None => {
-                            
-                            // Otherwise its an error
-                            return Some(ExecutionError::UnknownVariable)
-                        }
-                    };
+                match self.rm_record(&variable) {
+                    Some(e) => return Some(e),
+                    None    => {
+                        self.op_stack.push(Rc::new(RefCell::new(
+                            RecordData::Integer(Integer::from(1))
+                        )));
+                        None
+                    }
                 }
-                
-                self.op_stack.push(Rc::new(RefCell::new(
-                    RecordData::Integer(rug::Integer::from(1))
-                )));
-                return None;
-            }
-
-            "to_int" => {
-
-                for v in variables {
-
-                    // Get the variable from memory
-                    match self.get_record_by_var_type(v) {
-                        Some(var) => {
-                            let mut var_item = var.borrow_mut();
-                            match var_item.to_int() {
-                                Some(v) => { var_item.update_value(v) }
-                                None    => { return Some(ExecutionError::ConversionFailure(modifier_function, "Convert item to int".to_string())) }
-                            }
-                        }
-                        None => {
-                            
-                            // Otherwise its an error
-                            return Some(ExecutionError::UnknownVariable)
-                        }
-                    };
-                }
-                
-                self.op_stack.push(Rc::new(RefCell::new(
-                    RecordData::Integer(rug::Integer::from(1))
-                )));
-                return None;
-            }
-
-            "to_float" => {
-
-                for v in variables {
-
-                    // Get the variable from memory
-                    match self.get_record_by_var_type(v) {
-                        Some(var) => {
-                            let mut var_item = var.borrow_mut();
-                            match var_item.to_float() {
-                                Some(v) => { var_item.update_value(v) }
-                                None    => { return Some(ExecutionError::ConversionFailure(modifier_function, "Convert item to float".to_string())) }
-                            }
-                        }
-                        None => {
-                            
-                            // Otherwise its an error
-                            return Some(ExecutionError::UnknownVariable)
-                        }
-                    };
-                }
-                
-                self.op_stack.push(Rc::new(RefCell::new(
-                    RecordData::Integer(rug::Integer::from(1))
-                )));
-                return None;
             }
 
             _ => {
@@ -541,14 +476,611 @@ impl Engine {
                         }
                         None
                     }
+
+                    "to_string" => {
+                        let mut new_item = accessed_item.borrow().get_value();
+                        match new_item.to_string() {
+                            Some(v) => { 
+                                accessed_item.borrow_mut().update_value(v.clone());
+                                self.op_stack.push(Rc::new(RefCell::new(RecordData::Integer(Integer::from(1)))));
+                            
+                            }
+                            None    => { 
+                                self.op_stack.push(Rc::new(RefCell::new(RecordData::Integer(Integer::from(0)))));
+                                return Some(ExecutionError::ConversionFailure(method.method, "Convert item to string".to_string())) 
+                            }
+                        }
+                        None
+                    }
+
+                    "to_int" => {
+                        let mut new_item = accessed_item.borrow().get_value();
+                        match new_item.to_int() {
+                            Some(v) => { 
+                                accessed_item.borrow_mut().update_value(v.clone());
+                                self.op_stack.push(Rc::new(RefCell::new(RecordData::Integer(Integer::from(1))))) 
+                            
+                            }
+                            None    => { 
+                                self.op_stack.push(Rc::new(RefCell::new(RecordData::Integer(Integer::from(0)))));
+                                return Some(ExecutionError::ConversionFailure(method.method, "Convert item to int".to_string()))
+                             }
+                        }
+                        None
+                    }
+
+                    "to_float" => {
+                        let mut new_item = accessed_item.borrow().get_value();
+                        match new_item.to_float() {
+                            Some(v) => { 
+                                accessed_item.borrow_mut().update_value(v.clone());
+                                self.op_stack.push(Rc::new(RefCell::new(RecordData::Integer(Integer::from(1))))) 
+                            
+                            }
+                            None    => { 
+                                self.op_stack.push(Rc::new(RefCell::new(RecordData::Integer(Integer::from(0)))));
+                                return Some(ExecutionError::ConversionFailure(method.method, "Convert item to float".to_string())) 
+                            }
+                        }
+                        None
+                    }
+
+                    "at" => {
+
+                        if method.params.len() != 1 { 
+                            return Some(ExecutionError::InvalidParameters)
+                        }
+
+                        let exp = *method.params[0].clone();
+
+                        // Evaluate precision
+                        if let Some(e) = self.execute_expression(exp) {
+                            return Some(e);
+                        }
+
+                        // Get the lhs operand
+                        let location = match self.op_stack.pop() {
+                            Some(n) => { n }
+                            None => { return Some(ExecutionError::StackError); }
+                        };
+
+                        let location = location.borrow().get_value();
+
+                        match location {
+
+                            RecordData::Integer(i) => {
+
+                                match accessed_item.borrow().get_value() {
+                                    RecordData::String(s) => {
+
+                                        if i > s.len() {
+                                            return Some(ExecutionError::IndexError);
+                                        }
+
+                                        let s_idx = String::from(s.bytes().nth(i.to_i64().unwrap() as usize).unwrap() as char);
+
+                                        self.op_stack.push(Rc::new(RefCell::new(RecordData::String(s_idx))));
+
+                                        None
+                                    }
+
+                                    _ => {
+                                        return Some(ExecutionError::InvalidOperation("Non-string type does not contain method '.at(N)' "));
+                                    }
+                                }
+                            }
+                            _ => {
+                                return Some(ExecutionError::InvalidOperation("Parameter expected integer"));
+                            }
+                        }
+                    }
+
                     _ => {
 
                         return Some(ExecutionError::UnknownVariableMethod(".", method.method));
                     }
                 }
-
             }
         }
     }
 
+    /// Perform a unary operation
+    fn perform_unary(&mut self, expression: Expr, op: UnaryOpcode) -> Option<ExecutionError> {
+
+        // Load the variable to access
+        if let Some(err) = self.execute_expression(expression) {
+            return Some(err);
+        }
+
+        // Get the item
+        let accessed_item = match self.op_stack.pop() {
+            None => {
+                return Some(ExecutionError::StackError);
+            }
+
+            Some(val) => { 
+                val
+             }
+        };
+
+        let item_value = accessed_item.borrow().get_value();
+
+        match item_value.clone() {
+
+            RecordData::Integer(v) => {
+                return self.perform_unary_integer(v, op);
+            }
+            
+            RecordData::Float(_) => {
+
+                match accessed_item.borrow().get_value().to_int() {
+                    Some(v) => {
+                        match v {
+                            RecordData::Integer(i) => {
+                                return self.perform_unary_integer(i, op);
+                            },
+                            _ => {
+                                panic!("RecordData rust function to_int came back okay but somehow didn't return int type");
+                            }
+                        }
+                    }
+                    None    => return Some(ExecutionError::ConversionFailure(
+                        "Converting float to integer".to_string(),
+                        "Required for unary operation".to_string()
+                    ))
+                };
+            }
+
+            RecordData::String(_) => {
+                return Some(ExecutionError::InvalidOperation("Attempted unary operation on string type"));
+            }
+
+
+            RecordData::Dict(_) => {
+                return Some(ExecutionError::InvalidOperation("Attempted unary operation on dictionary type"));
+            }
+        }
+    }
+
+    /// Perform a unary operation
+    fn perform_unary_integer(&mut self, item: Integer, op: UnaryOpcode) -> Option<ExecutionError> {
+
+        match op {
+            UnaryOpcode::BwNot => {
+                self.op_stack.push(Rc::new(RefCell::new(RecordData::Integer( !item ))));
+            }
+
+            UnaryOpcode::Negate => {
+
+                if item > 0 {
+                    self.op_stack.push(Rc::new(RefCell::new(RecordData::Integer( Integer::from( 0 ) ))));
+                } else {
+                    self.op_stack.push(Rc::new(RefCell::new(RecordData::Integer( Integer::from( 1 ) ))));
+                }
+            }
+        }
+        None
+    }
+
+    /// Perform an opcode
+    pub fn perform_opcode(&mut self, lhs: Expr, rhs: Expr, op: Opcode) -> Option<ExecutionError> {
+
+        // Load the variable to access
+        if let Some(err) = self.execute_expression(lhs) {
+            return Some(err);
+        }
+
+        // Get the item
+        let lhs_item = match self.op_stack.pop() {
+            None => {
+                return Some(ExecutionError::StackError);
+            }
+            Some(val) => { 
+                val.borrow().get_value()
+             }
+        };
+
+        // Load the variable to access
+        if let Some(err) = self.execute_expression(rhs) {
+            return Some(err);
+        }
+
+        // Get the item
+        let rhs_item = match self.op_stack.pop() {
+            None => {
+                return Some(ExecutionError::StackError);
+            }
+            Some(val) => { 
+                val.borrow().get_value()
+             }
+        };
+
+        // Figure out what is going on
+        /*
+            This block of code determines elevation of items in an expression to other types
+
+            By figuring out what type the lhs and rhs of the expression we promote what needs
+            promotion and then call on the actual op executors for the given type
+        */
+        match lhs_item {
+
+            RecordData::Integer(v_lhs) => {
+                match rhs_item {
+                    RecordData::Integer(v_rhs) => {
+                        
+                        let result = self.execute_op_integer(v_lhs, v_rhs, op);
+                        self.op_stack.push(Rc::new(RefCell::new(
+                            RecordData::Integer( result )
+                        )));
+                        None
+                    }
+                    RecordData::Float(v_rhs) => {
+                        let mut vf_lhs = Float::new(FLOAT_PRECISION);
+                        vf_lhs.assign(v_lhs);
+
+                        let result = self.execute_op_float(vf_lhs, v_rhs, op);
+                        self.op_stack.push(Rc::new(RefCell::new(
+                            RecordData::Float( result )
+                        )));
+                        None
+                    }
+                    RecordData::String(v_rhs) => {
+                        let v_lhs = String::from(v_lhs.to_string_radix(RADIX));
+                        return self.execute_op_string(v_lhs, v_rhs, op);
+                    }
+                    RecordData::Dict(_) => {
+                        return Some(ExecutionError::InvalidOperation("No valid operation for type Dictionary"));
+                    }
+                }
+            }
+
+            RecordData::Float(v_lhs) => {
+                match rhs_item {
+                    RecordData::Integer(v_rhs) => {
+                        let mut vf_rhs = Float::new(FLOAT_PRECISION);
+                        vf_rhs.assign(v_rhs);
+                        let result = self.execute_op_float(v_lhs, vf_rhs, op);
+                        self.op_stack.push(Rc::new(RefCell::new(
+                            RecordData::Float( result )
+                        )));
+                        None
+                    }
+                    RecordData::Float(v_rhs) => {
+                        let result = self.execute_op_float(v_lhs, v_rhs, op);
+                        self.op_stack.push(Rc::new(RefCell::new(
+                            RecordData::Float( result )
+                        )));
+                        None
+                    }
+                    RecordData::String(v_rhs) => {
+                        let vs_lhs = String::from(v_lhs.to_string_radix(RADIX, Some(v_lhs.prec() as usize)));
+                        return self.execute_op_string(vs_lhs, v_rhs, op);
+                    }
+                    RecordData::Dict(_) => {
+                        return Some(ExecutionError::InvalidOperation("No valid operation for type Dictionary"));
+                    }
+                }
+            }
+
+            RecordData::String(v_lhs) => {
+                match rhs_item {
+                    RecordData::Integer(v_rhs) => {
+                        let v_rhs = String::from(v_rhs.to_string_radix(RADIX));
+                        return self.execute_op_string(v_lhs, v_rhs, op);
+                    }
+                    RecordData::Float(v_rhs) => {
+                        let vs_rhs = String::from(v_rhs.to_string_radix(RADIX, Some(v_rhs.prec() as usize)));
+                        return self.execute_op_string(v_lhs, vs_rhs, op);
+                    }
+                    RecordData::String(v_rhs) => {
+                        return self.execute_op_string(v_lhs, v_rhs, op);
+                    }
+                    RecordData::Dict(_) => {
+                        return Some(ExecutionError::InvalidOperation("No valid operation for type Dictionary"));
+                    }
+                }
+            }
+
+            RecordData::Dict(_) => {
+                return Some(ExecutionError::InvalidOperation("No valid operation for type Dictionary"));
+            }
+
+        }
+    }
+
+    /// Execute a string operation
+    fn execute_op_string(&mut self, lhs: String, rhs: String, op: Opcode) -> Option<ExecutionError> {
+        
+        match op {
+            Opcode::Add => {
+                self.op_stack.push(Rc::new(RefCell::new(RecordData::String( lhs + rhs.as_str() ))));
+            }
+
+            _ => {
+                return Some(ExecutionError::InvalidOperation("Invalid operation for type String"));
+            }
+        }
+
+        None
+    }
+
+    /// Execute an integer operation
+    fn execute_op_integer(&mut self, lhs: Integer, rhs: Integer, op: Opcode) -> Integer {
+
+        match op {
+            Opcode::Mul => {
+                //println!("mul");
+                return lhs * rhs;
+            }
+            Opcode::Div => {
+                //println!("div");
+                return lhs / rhs;
+            }
+            Opcode::Add => {
+                //println!("add");
+                return lhs + rhs;
+            }
+            Opcode::Sub => {
+                //println!("sub");
+                return lhs - rhs;
+            }
+            Opcode::Lte => {
+                return Integer::from(lhs <= rhs);
+            }
+
+            Opcode::Gte => {
+                return Integer::from(lhs >= rhs);
+            }
+
+            Opcode::Lt => {
+                return Integer::from(lhs < rhs);
+            }
+
+            Opcode::Gt => {
+                return Integer::from(lhs > rhs);
+            }
+
+            Opcode::Equal => {
+                return Integer::from(lhs == rhs);
+            }
+
+            Opcode::Ne => {
+                return Integer::from(lhs != rhs);
+            }
+
+            Opcode::Pow => {
+
+                // Rust pow for i64 requires a u32 so we attempt to convert it to a u32
+                // if it fails a PANIC!
+                let rhs_converted = match u32::try_from(rhs) {
+                    Ok(r) => { r }
+                    Err(e) => {
+                        panic!("Unable to convert value into u32 for \"pow\": {}", e);
+                    }
+                };
+
+                return Integer::from(lhs.pow(rhs_converted));
+        
+            }
+
+            Opcode::Mod => {
+                return lhs % rhs;
+            }
+
+            Opcode::Lsh => {
+
+                let rhs_converted = match u64::try_from(rhs) {
+                    Ok(r) => { r }
+                    Err(e) => {
+                        panic!("Unable to convert value into u64 for \"lsh\": {}", e);
+                    }
+                };
+
+                let lhs_converted = match u64::try_from(lhs) {
+                    Ok(r) => { r }
+                    Err(e) => {
+                        panic!("Unable to convert value into u64 for \"lsh\": {}", e);
+                    }
+                };
+
+                return Integer::from(lhs_converted << rhs_converted);
+            }
+
+            Opcode::Rsh => {
+
+                let rhs_converted = match u64::try_from(rhs) {
+                    Ok(r) => { r }
+                    Err(e) => {
+                        panic!("Unable to convert value into u64 for \"rhs\": {}", e);
+                    }
+                };
+
+                let lhs_converted = match u64::try_from(lhs) {
+                    Ok(r) => { r }
+                    Err(e) => {
+                        panic!("Unable to convert value into u64 for \"rhs\": {}", e);
+                    }
+                };
+                
+                return Integer::from(lhs_converted >> rhs_converted);
+            }
+
+            Opcode::BwXor => {
+                return lhs ^ rhs
+            }
+
+            Opcode::BwOr => {
+                return lhs | rhs;
+            }
+
+            Opcode::BwAnd => {
+                return lhs & rhs;
+            }
+
+            Opcode::Or => {
+
+                if lhs > 0 || rhs > 0{
+                    return Integer::from(1);
+                }
+                return Integer::from(0);
+            }
+
+            Opcode::And => {
+                
+                if lhs > 0 && rhs > 0{
+                    return Integer::from(1);
+                }
+                return Integer::from(0);
+            }
+        }
+    }
+
+    /// Execute a float operation
+    fn execute_op_float(&mut self, lhs: Float, rhs: Float, op: Opcode) -> Float  {
+        
+        match op {
+            Opcode::Mul => {
+                //println!("mul");
+                return lhs * rhs;
+            }
+            Opcode::Div => {
+                //println!("div");
+                return lhs / rhs;
+            }
+            Opcode::Add => {
+                //println!("add");
+                return lhs + rhs;
+            }
+            Opcode::Sub => {
+                //println!("sub");
+                return lhs - rhs;
+            }
+            Opcode::Lte => {
+                let mut val = Float::new(FLOAT_PRECISION);
+                val.assign(Integer::from(lhs <= rhs));
+                return val;
+            }
+
+            Opcode::Gte => {
+                let mut val = Float::new(FLOAT_PRECISION);
+                val.assign(Integer::from(lhs >= rhs));
+                return val;
+            }
+
+            Opcode::Lt => {
+                let mut val = Float::new(FLOAT_PRECISION);
+                val.assign(Integer::from(lhs < rhs));
+                return val;
+            }
+
+            Opcode::Gt => {
+                let mut val = Float::new(FLOAT_PRECISION);
+                val.assign(Integer::from(lhs > rhs));
+                return val;
+            }
+
+            Opcode::Equal => {
+                let mut val = Float::new(FLOAT_PRECISION);
+                val.assign(Integer::from(lhs == rhs));
+                return val;
+            }
+
+            Opcode::Ne => {
+                let mut val = Float::new(FLOAT_PRECISION);
+                val.assign(Integer::from(lhs != rhs));
+                return val;
+            }
+
+            Opcode::Pow => {
+
+                // Rust pow for i64 requires a u32 so we attempt to convert it to a u32
+                // if it fails a PANIC!
+                let rhs_converted = rhs.to_f64();
+                
+                return Float::from(lhs.pow(rhs_converted));
+            }
+
+            Opcode::Mod => {
+                return lhs % rhs;
+            }
+
+            Opcode::Lsh => {
+
+                let rhs_converted = match u64::try_from(rhs.to_integer().unwrap()) {
+                    Ok(r) => { r }
+                    Err(e) => {
+                        panic!("Unable to convert value into u64 for \"lsh\": {}", e);
+                    }
+                };
+
+                let lhs_converted = match u64::try_from(lhs.to_integer().unwrap()) {
+                    Ok(r) => { r }
+                    Err(e) => {
+                        panic!("Unable to convert value into u64 for \"lsh\": {}", e);
+                    }
+                };
+
+                let mut val = Float::new(FLOAT_PRECISION);
+                val.assign(Integer::from(lhs_converted << rhs_converted));
+                return val;
+            }
+
+            Opcode::Rsh => {
+
+                let rhs_converted = match u64::try_from(rhs.to_integer().unwrap()) {
+                    Ok(r) => { r }
+                    Err(e) => {
+                        panic!("Unable to convert value into u64 for \"rhs\": {}", e);
+                    }
+                };
+
+                let lhs_converted = match u64::try_from(lhs.to_integer().unwrap()) {
+                    Ok(r) => { r }
+                    Err(e) => {
+                        panic!("Unable to convert value into u64 for \"rhs\": {}", e);
+                    }
+                };
+                
+                let mut val = Float::new(FLOAT_PRECISION);
+                val.assign(Integer::from(lhs_converted >> rhs_converted));
+                return val;
+            }
+
+            Opcode::BwXor => {
+                return Float::with_val(FLOAT_PRECISION, lhs.to_integer().unwrap() ^ rhs.to_integer().unwrap() );
+            }
+
+            Opcode::BwOr => {
+                return Float::with_val(FLOAT_PRECISION, lhs.to_integer().unwrap() | rhs.to_integer().unwrap() );
+            }
+
+            Opcode::BwAnd => {
+                return Float::with_val(FLOAT_PRECISION, lhs.to_integer().unwrap() & rhs.to_integer().unwrap() );
+            }
+
+            Opcode::Or => {
+
+                if lhs > 0 || rhs > 0 {
+                    let mut val = Float::new(FLOAT_PRECISION);
+                    val.assign(Integer::from(1));
+                    return val;
+                }
+                let mut val = Float::new(FLOAT_PRECISION);
+                val.assign(Integer::from(0));
+                return val;
+            }
+
+            Opcode::And => {
+                
+                if lhs > 0 && rhs > 0{
+                    let mut val = Float::new(FLOAT_PRECISION);
+                    val.assign(Integer::from(1));
+                    return val;
+                }
+                let mut val = Float::new(FLOAT_PRECISION);
+                val.assign(Integer::from(0));
+                return val;
+            }
+        }
+    }
 }

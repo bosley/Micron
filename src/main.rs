@@ -1,8 +1,7 @@
 
 extern crate micron_engine;
-extern crate micron_parser;
 
-use micron_engine::{ Engine, ExecutionError };
+use micron_engine::Engine;
 
 use rustyline::error::ReadlineError;
 use rustyline::Editor;

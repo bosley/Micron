@@ -28,7 +28,7 @@ pub enum Expr {
     UnaryOp(Box<Expr>, UnaryOpcode),
 
 
-    BuiltInModifierCall(String, Vec<VariableType>),
+    BuiltInModifierCall(String, String),
 
     Access(Box<Expr>, Accessors, Box<MemberMethod>),
 
