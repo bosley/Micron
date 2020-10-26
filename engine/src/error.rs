@@ -11,5 +11,9 @@ pub enum ExecutionError {
     UnknownBuiltInFunction(String),
 
     #[display(fmt = "Conversion failure arose from {} | {}", _0, _1)]
-    ConversionFailure(String, String)
+    ConversionFailure(String, String),
+
+
+    #[display(fmt = "Unknown method '{}' attempted to be accessed by accessor '{}'", _1, _0)]
+    UnknownVariableMethod(&'static str, String)
 }

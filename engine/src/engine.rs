@@ -1,9 +1,24 @@
+/*
+
+        TODO : 
+
+            The execution of unary ops and opcodes needs to be copied over from the original implementation
+
+            Certain accessors for variables aren't created (see the TODO in the perform_accessor method)
+
+            Built in function '$drop(Vec<Expr>)' needs to be added to grammar and the engine to delete things
+
+            Maybe merge in the $to_<type> built-ins into accessors "." because why not ? 
+
+            String representation of dictionaries could be prettier
+*/
+
 
 extern crate micron_ast;
 
 use std::{ cell::RefCell, rc::Rc };
 
-use micron_ast::{ Statement, Expr, VariableType, DictAccessType};
+use micron_ast::{ Statement, Expr, VariableType, DictAccessType, Accessors, MemberMethod};
 use crate::types::{ Dictionary, RecordData };
 use crate::error::ExecutionError;
 
@@ -80,6 +95,8 @@ impl Engine {
                 return self.get_record(&var_name);
             }
 
+            //  This will drill into the any n-dictionaries and I'm very proud of it
+            //
             VariableType::Nested(var_name, accessor) => {
 
                 // First we get the top level variable
@@ -267,6 +284,110 @@ impl Engine {
         None
     }
 
+    /// Execute an actual expression 
+    fn execute_expression(&mut self, expression: Expr) -> Option<ExecutionError> {
+
+        match expression {
+
+            // Load a raw integer
+            //
+            Expr::Number(i) => {
+                self.op_stack.push(Rc::new(RefCell::new(RecordData::Integer(i))));
+                return None;
+            }
+
+            // Load a raw real
+            //
+            Expr::Real(f) => {
+                self.op_stack.push(Rc::new(RefCell::new(RecordData::Float(f))));
+                return None;
+            }
+
+            // Load a raw string
+            //
+            Expr::String(s) => {
+                self.op_stack.push(Rc::new(RefCell::new(RecordData::String(s))));
+                return None;
+            }
+
+            // Load a variable
+            //
+            Expr::Variable(v) => {
+
+                // Get the variable from memory
+                match self.get_record_by_var_type(v) {
+                    Some(var) => {
+
+                        // If it exists stack it
+                        self.op_stack.push(var);
+                    }
+                    None => {
+                        
+                        // Otherwise its an error
+                        return Some(ExecutionError::UnknownVariable)
+                    }
+                };
+
+                // Get on out!
+                return None;
+            }
+
+            //  Load a new dictionary
+            //
+            Expr::Dict(dict_entries) => {
+
+                let mut new_dict = Dictionary::new();
+
+                for entry in dict_entries {
+                    match self.execute_expression(*entry.value) {
+                        Some(e) => return Some(e),
+                        None => {
+                            match self.op_stack.pop() {
+                                None => {
+                                    eprintln!("Unable to get variable from stack to set item");
+                                    return Some(ExecutionError::StackError);
+                                }
+                                Some(val) => { 
+                                    new_dict.set(&entry.key, val.borrow().get_value());
+                                }
+                            }
+                        }
+                    }
+                }
+
+                self.op_stack.push(Rc::new(RefCell::new(RecordData::Dict(new_dict))));
+                return None;
+            }
+
+            // Modify some variable(s) with a built in function
+            //
+            Expr::BuiltInModifierCall(modifier_function, variables) => {
+
+                return self.process_modifier(modifier_function, variables);
+            }
+
+            //  Access
+            //
+            Expr::Access(access_expr, accessor, method) => {
+
+                return self.perform_access(*access_expr, accessor, *method);
+            }
+
+            Expr::UnaryOp(op_expr, o) => {
+
+                panic!("Unary op not yet complete!");
+            }
+
+            Expr::Op(lhs_expr, op, rhs_expr) => {
+
+                panic!("Op not yet complete!");
+            }
+        }
+
+
+        None
+    }
+
     /// Process a modification 
     fn process_modifier(&mut self, modifier_function: String, variables: Vec<VariableType>) -> Option<ExecutionError> {
 
@@ -311,7 +432,7 @@ impl Engine {
                             let mut var_item = var.borrow_mut();
                             match var_item.to_int() {
                                 Some(v) => { var_item.update_value(v) }
-                                None    => { return Some(ExecutionError::ConversionFailure(modifier_function, "Convert item to string".to_string())) }
+                                None    => { return Some(ExecutionError::ConversionFailure(modifier_function, "Convert item to int".to_string())) }
                             }
                         }
                         None => {
@@ -338,7 +459,7 @@ impl Engine {
                             let mut var_item = var.borrow_mut();
                             match var_item.to_float() {
                                 Some(v) => { var_item.update_value(v) }
-                                None    => { return Some(ExecutionError::ConversionFailure(modifier_function, "Convert item to string".to_string())) }
+                                None    => { return Some(ExecutionError::ConversionFailure(modifier_function, "Convert item to float".to_string())) }
                             }
                         }
                         None => {
@@ -361,101 +482,73 @@ impl Engine {
         }
     }
 
-    /// Execute an actual expression 
-    fn execute_expression(&mut self, expression: Expr) -> Option<ExecutionError> {
+    /// Perform actions on an accessor
+    fn perform_access(&mut self, item_expr: Expr, accessor: Accessors, method: MemberMethod) -> Option<ExecutionError> {
 
-        match expression {
+        // Load the variable to access
+        if let Some(err) = self.execute_expression(item_expr) {
+            return Some(err);
+        }
 
-
-            Expr::Number(i) => {
-                self.op_stack.push(Rc::new(RefCell::new(RecordData::Integer(i))));
-                return None;
+        // Get the item
+        let accessed_item = match self.op_stack.pop() {
+            None => {
+                return Some(ExecutionError::StackError);
             }
 
-            Expr::Real(f) => {
-                self.op_stack.push(Rc::new(RefCell::new(RecordData::Float(f))));
-                return None;
-            }
+            Some(val) => { 
+                val
+             }
+        };
 
-            Expr::String(s) => {
-                self.op_stack.push(Rc::new(RefCell::new(RecordData::String(s))));
-                return None;
-            }
+        /*
+        
+                TODO : .set_precision()     - Modify the actual data item
+                       .with_precision()    - Make a copy with given precision
+                       .at()                - Copy single string char
+        
+        */
 
-            Expr::Variable(v) => {
+        match accessor {
 
-                // Get the variable from memory
-                match self.get_record_by_var_type(v) {
-                    Some(var) => {
+            Accessors::Dot => {
 
-                        // If it exists stack it
-                        self.op_stack.push(var);
-                    }
-                    None => {
-                        
-                        // Otherwise its an error
-                        return Some(ExecutionError::UnknownVariable)
-                    }
-                };
+                match method.method.as_str() {
 
-                // Get on out!
-                return None;
-            }
-
-            Expr::UnaryOp(op_expr, o) => {
-
-                panic!("Unary op not yet complete!");
-            }
-
-            Expr::Op(lhs_expr, op, rhs_expr) => {
-
-                panic!("Op not yet complete!");
-            }
-
-            // Modify some variable(s) with a built in function
-            //
-            Expr::BuiltInModifierCall(modifier_function, variables) => {
-
-                return self.process_modifier(modifier_function, variables);
-            }
-
-            //  Create a new dictionary
-            //
-            Expr::Dict(dict_entries) => {
-
-                let mut new_dict = Dictionary::new();
-
-                for entry in dict_entries {
-                    match self.execute_expression(*entry.value) {
-                        Some(e) => return Some(e),
-                        None => {
-                            match self.op_stack.pop() {
-                                None => {
-                                    eprintln!("Unable to get variable from stack to set item");
-                                    return Some(ExecutionError::StackError);
-                                }
-                                Some(val) => { 
-                                    new_dict.set(&entry.key, val.borrow().get_value());
-                                }
-                            }
+                    "as_string" => {
+                        let mut new_item = accessed_item.borrow().get_value();
+                        match new_item.to_string() {
+                            Some(v) => { self.op_stack.push(Rc::new(RefCell::new(v.clone()))) }
+                            None    => { return Some(ExecutionError::ConversionFailure(method.method, "Represent item as string".to_string())) }
                         }
+                        None
+                    }
+
+                    "as_int" => {
+                        let mut new_item = accessed_item.borrow().get_value();
+                        match new_item.to_int() {
+                            Some(v) => { self.op_stack.push(Rc::new(RefCell::new(v.clone()))) }
+                            None    => { return Some(ExecutionError::ConversionFailure(method.method, "Represent item as int".to_string())) }
+                        }
+                        None
+                    }
+
+                    "as_float" => {
+                        let mut new_item = accessed_item.borrow().get_value();
+                        match new_item.to_float() {
+                            Some(v) => { self.op_stack.push(Rc::new(RefCell::new(v.clone()))) }
+                            None    => { return Some(ExecutionError::ConversionFailure(method.method, "Represent item as float".to_string())) }
+                        }
+                        None
+                    }
+                    _ => {
+
+                        return Some(ExecutionError::UnknownVariableMethod(".", method.method));
                     }
                 }
 
-                self.op_stack.push(Rc::new(RefCell::new(RecordData::Dict(new_dict))));
-                return None;
-            }
-
-            //  Accessor
-            //
-            Expr::Access(access_expr, accessor, method) => {
-
-                panic!("Access not yet complete!");
             }
         }
-
-
-        None
     }
 
 }

@@ -1,8 +1,10 @@
 
 use std::{ cell::RefCell, rc::Rc };
-
 use rug::{Integer, Float, Assign};
 use std::collections::HashMap;
+
+extern crate micron_ast;
+use micron_ast::{ FLOAT_PRECISION, RADIX };
 
 /// Record of data
 #[derive(Debug, Clone)]
@@ -33,14 +35,12 @@ impl RecordData {
     pub(crate) fn to_string(&mut self) -> Option<RecordData> {
         match &*self {
             RecordData::Integer(v) => {
-                Some(RecordData::String(String::from(v.to_string_radix(10))))
+                Some(RecordData::String(String::from(v.to_string_radix(RADIX))))
             }
 
             RecordData::Float(v)   => {
 
-                // TODO:  Need to set precision in the Some() here to be configurable 
-                //
-                Some(RecordData::String(v.to_string_radix(10, Some(52))))
+                Some(RecordData::String(v.to_string_radix(RADIX, Some(v.prec() as usize))))
             }
 
             RecordData::String(v)  => {
@@ -92,7 +92,7 @@ impl RecordData {
         match &*self {
             RecordData::Integer(v) => {
 
-                let mut f_v = Float::new(53);
+                let mut f_v = Float::new(FLOAT_PRECISION);
                 f_v.assign(v);
 
                 Some(RecordData::Float( f_v ))
@@ -116,6 +116,22 @@ impl RecordData {
 
             RecordData::Dict(_)    => {
 
+                None
+            }
+        }
+    }
+
+    pub(crate) fn set_precision(&mut self, precision: u32) -> Option<RecordData> {
+        match &*self {
+            RecordData::Float(v)   => {
+
+                let mut f_v = Float::new(precision);
+                f_v.assign(v);
+
+                Some(RecordData::Float(v.clone()))
+            }
+
+            _ => {
                 None
             }
         }

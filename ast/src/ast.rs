@@ -2,6 +2,7 @@ use rug::{ Integer, Float };
 
 /// Precision of floats read into Micron
 pub const FLOAT_PRECISION: u32 = 53;
+pub const RADIX: i32 = 10;
 
 #[derive(Debug, Clone)]
 pub enum VariableType {
