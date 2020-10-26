@@ -5,7 +5,7 @@ authors = ["bosley <bosley117@gmail.com>"]
 edition = "2018"
 
 [workspace]
-members = [".", "ast", "environment", "interpreter", "parser"]
+members = [".", "ast", "engine", "parser"]
 
 [[bin]]
 name = "micron-repl"
@@ -14,7 +14,6 @@ path = "src/main.rs"
 [dependencies]
 rustyline = "6.3.0"
 
-
-micron_interpreter = { path = "./interpreter" }
-micron_environment = { path = "./environment" }
+micron_ast = { path = "./ast" }
 micron_parser = { path = "./parser" }
+micron_engine = { path = "./engine" }

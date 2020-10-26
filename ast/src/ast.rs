@@ -1,13 +1,19 @@
-
 use rug::{ Integer, Float };
 
 /// Precision of floats read into Micron
 pub const FLOAT_PRECISION: u32 = 53;
+pub const RADIX: i32 = 10;
+
+#[derive(Debug, Clone)]
+pub enum VariableType {
+   Singular(String),
+   Nested(String, Vec<DictAccessType>),
+}
 
 #[derive(Debug)]
 pub enum Statement {
 
-    Assignment(String, Box<Expr>),
+    Assignment(VariableType, Box<Expr>),
     BareExpression(Box<Expr>)
 }
 
@@ -16,25 +22,20 @@ pub enum Expr {
     Number(Integer),
     Real(Float),
     String(String),
-    Variable(String),
-    Modifier(String, Vec<String>),
+    Variable(VariableType),
 
     Op(Box<Expr>, Opcode, Box<Expr>),
     UnaryOp(Box<Expr>, UnaryOpcode),
+
+
+    BuiltInModifierCall(String, String),
+
     Access(Box<Expr>, Accessors, Box<MemberMethod>),
 
     // { .. }
     Dict(Vec<Box<DictEntry>>),
-
-    // Variable, Key
-    VarDict(String, Vec<DictAccessType>),
 }
 
-#[derive(Debug, Clone)]
-pub enum DictAccessType {
-    RawValue(String),
-    Variable(String)
-}
 
 #[derive(Debug, Clone)]
 pub enum Opcode {
@@ -63,6 +64,12 @@ pub enum Opcode {
 pub enum UnaryOpcode {
     Negate,
     BwNot
+}
+
+#[derive(Debug, Clone)]
+pub enum DictAccessType {
+    RawValue(String),
+    Variable(String)
 }
 
 #[derive(Debug, Clone)]

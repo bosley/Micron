@@ -1,11 +1,7 @@
 
+extern crate micron_engine;
 
-extern crate micron_environment;
-extern crate micron_interpreter;
-extern crate micron_parser;
-
-use micron_environment::MicronEnv;
-use micron_interpreter::MicronInterpreter;
+use micron_engine::Engine;
 
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
@@ -30,8 +26,7 @@ fn repl() {
 
     repl_banner();
 
-    let mut env  = MicronEnv::new();
-    let mut interpreter = MicronInterpreter::new(&mut env);
+    let mut engine  = Engine::new();
 
     let mut rl = Editor::<()>::new();
     if rl.load_history("repl-history.txt").is_err() {
@@ -51,7 +46,7 @@ fn repl() {
                         
                         for x in statements {
             
-                            if let Err(e) = interpreter.interpret(*x) {
+                            if let Some(e) = engine.execute_statement(*x) {
 
                                 println!("Error: {}", e);
                             }

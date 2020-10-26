@@ -4,6 +4,7 @@ use rug::Assign;
 
 use micron_ast::{
     Expr, 
+    VariableType,
     Opcode, 
     UnaryOpcode, 
     Statement, 
@@ -32,7 +33,7 @@ Statements: Box<Statement> = {
 // Assignment statement 
 AssignmentStatement: Box<Statement> = {
 
-    <v:Variable> "=" <e:Expr>   => Box::new(Statement::Assignment(v, e)),
+    <v:VarTerm> "=" <e:Expr>   => Box::new(Statement::Assignment(v, e)),
 }
 
 // Bare Expression
@@ -42,6 +43,18 @@ BareExpressionStatement: Box<Statement> = {
     <b:BuiltInFunction> => Box::new(Statement::BareExpression(b))
 }
 
+
+//    Variables:
+//    my_var
+//    my_var['key']['key1']...['keyN']
+//    my_var.some_method(...).some_other_method()...
+
+VarTerm: VariableType = {
+    Variable  => VariableType::Singular(<>),
+    <v:Variable> <d:DictAccessor+> => VariableType::Nested(v, d)
+}
+
+
 // Expression
 Expr: Box<Expr> = {
     Expr ExprOp Factor => Box::new(Expr::Op(<>)),
@@ -49,6 +62,8 @@ Expr: Box<Expr> = {
     "!" <f:Factor> => Box::new(Expr::UnaryOp(f, UnaryOpcode::Negate)),
     "~" <f:Factor> => Box::new(Expr::UnaryOp(f, UnaryOpcode::BwNot)),
 };
+
+
 
 Access: Accessors = {
     "."  => Accessors::Dot
@@ -87,16 +102,11 @@ FactorOp: Opcode = {
 Term: Box<Expr> = {
     Integer   => Box::new(Expr::Number(<>)),
     Float     => Box::new(Expr::Real(<>)),
-    VarTerm,
+    VarTerm   => Box::new(Expr::Variable(<>)),
     DictTerm,
     String    => Box::new(Expr::String(<>)),
     "(" <Expr> ")",
 };
-
-VarTerm: Box<Expr> = {
-    Variable  => Box::new(Expr::Variable(<>)),
-    <v:Variable> <d:DictAccessor+> => Box::new(Expr::VarDict(v, d))
-}
 
 DictAccessor: DictAccessType = {
     "[" <k:DictKey> "]"  => DictAccessType::RawValue(k),
@@ -113,6 +123,11 @@ DictionaryEntry: Box<DictEntry> = {
                                         key: s,
                                         value: e
                                     })
+}
+
+MethodCall: Box<MemberMethod> = {
+
+    "." <m:Method> => m
 }
 
 Method: Box<MemberMethod> = {
@@ -132,7 +147,7 @@ CallParams: Vec<Box<Expr>> = {
 
 BuiltInFunction: Box<Expr> = {
 
-    "$" <f:Function> "(" <v:Multiples<",", Variable>> ")" => Box::new(Expr::Modifier(f, v))
+    "#" <f:Function> "(" <v:Variable> ")" => Box::new(Expr::BuiltInModifierCall(f, v))
 }
 
 Integer: rug::Integer = {

@@ -40,69 +40,43 @@ a + 3 * 2
 
 **Data Methods**
 
-|   Method         |  Params     |  In Expresison? |    Applicable Types
-|---               |---          |---              |---
-|   as_int         |   None      |       Yes       |    Integer, Float, String
-|   as_float       |   None      |       Yes       |    Integer, Float, String
-|   as_string      |   None      |       Yes       |    Integer, Float, String
-|   with_precision |   Integer   |       Yes       |    Float
-|   at             |   Integer   |       Yes       |    String
+|   Method         |  Params          |   Return Value                |    Applicable Types
+|---               |---               |---                            |---
+|   as_int         |   None           |  New item as representation   |    Integer, Float, String
+|   as_float       |   None           |  New item as representation   |    Integer, Float, String
+|   as_string      |   None           |  New item as representation   |    Integer, Float, String
+|   at             |   Integer        |  String                       |    String
+|   to_int         |   None           |  Integer 1 = Success          |    Integer, Float, String
+|   to_float       |   None           |  Integer 1 = Success          |    Integer, Float, String
+|   to_string      |   None           |  Integer 1 = Success          |    Integer, Float, String
 
 Examples:
 ```
-    a = (3.14).with_precision(10)
+    a = (3.14).as_string()
     b = "4".as_int()
     c = a.as_string()
+
 ```
 
-These data methods copy and convert data in-place and do not update the item it references. For instance, the line setting variable "c" sets "c" to the string representation of "a" and does not convert "a" to string. 
+**Built In Methods**
 
-**Built in Functions**
-
-|  Function  |  Params           |  In Expression? |   Applicable Types
-|--          |--                 |--               |--
-|  to_int    | existing var name |       No        |    Integer, Float, String
-|  to_float  | existing var name |       No        |    Integer, Float, String
-|  to_string | existing var name |       No        |    Integer, Float, String
+|   Method         |  Params          |   Return Value 
+|---               |---               |---           
+|   drop           |  Existing Var    |     Integer 1 = Success     
 
 _
 
-Built in functions must be prefixed by a '$'. These methods can not be in an expression themselves, but they convert the stored variable(s) to the given types. 
+Built in functions must be prefixed by a '#'. These methods can not be in an expression themselves.
 
 Example output:
 ```
 >> a = 3
 >> a
-Integer(MInteger { value: 3 })
->> $to_string(a)
-String(MString { value: "Modifications Complete" })
+Integer(3)
+>> #drop(a)
+Integer(1)
 >> a
-String(MString { value: "3" })
->> 
-
-```
-
-**Built in Functions**
-
-|  Function  |  Params           |  In Expression? |   Applicable Types
-|--          |--                 |--               |--
-|  to_int    | existing var name |       No        |    Integer, Float, String
-|  to_float  | existing var name |       No        |    Integer, Float, String
-|  to_string | existing var name |       No        |    Integer, Float, String
-
-_
-
-Built in functions must be prefixed by a '$'. 
-
-Example output:
-```
->> a = 3
->> a
-Integer(MInteger { value: 3 })
->> $to_string(a)
-String(MString { value: "Modifications Complete" })
->> a
-String(MString { value: "3" })
+Error: UnknownVariable
 >> 
 
 ```
@@ -120,6 +94,36 @@ String(MString { value: "3" })
 
 <var>[<var>]    // Where the [<var>] must be a string
 
+```
+
+Dictionaries can be nested to an arbitrary depth and used just as you'd expect them to
+
+```
+>> a = { 'moot' : 44,  'josh': 28, 'inner': { 'object': "Hello } }
+Error >>> Invalid token at 53
+>> a = { 'moot' : 44,  'josh': 28, 'inner': { 'object': "Hello" } }
+>> a['inner']['object']
+String("Hello")
+>> a['inner']['object'] = { 'now' : { 'a' : { 'dict': 44 } } }
+>> a['inner']['object']['now']['a']['dict']
+Integer(44)
+>> a['inner']['object']['now']['a']['dict'].as_string()
+String("44")
+>> a['inner']['object']['now']['a']['dict'].to_float()
+Integer(1)
+>> a['inner']['object']['now']['a']['dict']
+Float(44.000000000000000)
+>> #drop(a)
+Integer(1)
+>> a = {'hello' : "world", 'goodbye': "everyone" }
+>> b = "hello"
+>> a[b]
+String("world")
+>> 
+>> c = "goodbye"
+>> a[c]
+String("everyone")
+>> 
 ```
 
 **Operations**
