@@ -72,22 +72,6 @@ impl Engine {
 
     fn get_record_by_var_type(&self, var_type: VariableType) -> Option<Rc<RefCell<RecordData>>> {
 
-        /*
-        
-                This isn't working the way I meant it to. 
-
-                Its updating the referenced item to the inner and changing it rather than changing 
-                what its referencing. This is not what we need.
-
-                We need to change what item its referencing, not change the referenced item its self. 
-
-                We could solve this by writing a helper method and making this recursive. Oof.
-        
-        
-        */
-
-        eprintln!("THIS IS NOT WORKING CORRECTLY");
-
         match var_type {
             VariableType::Singular(var_name) => {
 
@@ -97,9 +81,9 @@ impl Engine {
             VariableType::Nested(var_name, accessor) => {
 
                 // First we get the top level variable
-                let top_level_variable = match self.get_record(&var_name) {
+                let mut top_level_variable = match self.get_record(&var_name) {
                     Some(existing_variable) => {
-                        existing_variable
+                        Box::new( existing_variable)
                     }
                     None => { return None; }
                 };
@@ -128,7 +112,7 @@ impl Engine {
                                         }
                                     };
 
-                                    top_level_variable.borrow_mut().update_value(new_value.borrow().clone());
+                                    top_level_variable = Box::new(new_value)
                                 }
             
                                 // If its a variable we have to load the variable and ensure its a string first
@@ -157,7 +141,7 @@ impl Engine {
                                                 }
                                             };
 
-                                            top_level_variable.borrow_mut().update_value(new_value.borrow().clone());
+                                            return Some(new_value);
                                         }
 
                                         _ => {
@@ -166,7 +150,6 @@ impl Engine {
                                             return None;
                                         }
                                     }
-                                    return None;
                                 }
                             }
                         }
@@ -175,7 +158,7 @@ impl Engine {
                         }
                     }
                 }
-                return Some(top_level_variable);
+                return Some(*top_level_variable);
             }
         }
     }
