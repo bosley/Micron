@@ -136,6 +136,43 @@ With this in mind, arbitrary scopes CAN be created to ensure a an outer scope us
 }
 ```
 
+# Functions 
+
+```
+
+def some_func(var, var1, var2) {
+
+    result = var + var1 + var2
+
+    return result
+}
+
+```
+
+# Objects - maybe ???
+
+```
+
+Obj some_object {
+
+    self.member = 0
+    self.other  = 0.0
+
+    def init(var, var1) {
+        self.member = var
+        self.other  = var1
+    }
+
+    def some_method() {
+
+        return self.member
+    }
+}
+
+
+```
+
+
 **Data Methods**
 
 Methods prefixed with 'as' copy the value and attempt to convert it to the requested type.
