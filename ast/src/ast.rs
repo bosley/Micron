@@ -10,11 +10,13 @@ pub enum VariableType {
    Nested(String, Vec<DictAccessType>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Statement {
 
+    ScopedStatementBlock(Vec<Box<Statement>>),
     Assignment(VariableType, Box<Expr>),
-    BareExpression(Box<Expr>)
+    BareExpression(Box<Expr>),
+    Yield(Box<Expr>),
 }
 
 #[derive(Debug, Clone)]
@@ -34,6 +36,8 @@ pub enum Expr {
 
     // { .. }
     Dict(Vec<Box<DictEntry>>),
+
+    IfExpression(Box<Vec<ConditionalBlock>>)
 }
 
 
@@ -87,4 +91,10 @@ pub struct MemberMethod {
 pub struct DictEntry {
     pub key: String,
     pub value: Box<Expr>
+}
+
+#[derive(Debug, Clone)]
+pub struct ConditionalBlock {
+    pub expression: Option<Box<Expr>>,
+    pub body:       Vec<Box<Statement>>
 }
