@@ -1,0 +1,11 @@
+[package]
+name = "micron_file_import"
+version = "0.1.0"
+authors = ["bosley <bosley117@gmail.com>"]
+edition = "2018"
+
+
+[dependencies]
+regex = "1"
+micron_ast = { path = "../ast" }
+micron_parser = { path = "../parser" }
