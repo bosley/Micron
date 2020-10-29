@@ -164,7 +164,7 @@ impl Engine {
                                                 }
                                             };
 
-                                            return Some(new_value);
+                                            top_level_variable = Box::new(new_value)
                                         }
 
                                         _ => {
