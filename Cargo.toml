@@ -5,15 +5,21 @@ authors = ["bosley <bosley117@gmail.com>"]
 edition = "2018"
 
 [workspace]
-members = [".", "ast", "engine", "parser"]
+members = [".", "ast", "engine", "parser", "file_import"]
+
+[[bin]]
+name = "micron"
+path = "src/micron.rs"
 
 [[bin]]
 name = "micron-repl"
-path = "src/main.rs"
+path = "src/repl.rs"
 
 [dependencies]
 rustyline = "6.3.0"
+clap = "2.33.3"
 
 micron_ast = { path = "./ast" }
 micron_parser = { path = "./parser" }
 micron_engine = { path = "./engine" }
+micron_file_import = { path = "./file_import" }

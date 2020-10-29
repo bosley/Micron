@@ -496,7 +496,6 @@ impl Engine {
 
             match conditional.expression {
                 Some(expression) => {
-                    println!("non-else stmt");
 
                     // Process the expression to see if we should execute the body
                     match self.execute_expression(*expression) {
@@ -526,7 +525,7 @@ impl Engine {
                     }
                 }
 
-                None => { println!("else stmt"); }
+                None => { /* Do nothing! */ }
             }
 
             // If we get here that means we are in the block we should execute, so we 

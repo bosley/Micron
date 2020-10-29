@@ -1,0 +1,20 @@
+
+
+
+-- If statement
+
+a = 10
+b = 20
+
+c = if a < b {
+
+    -- Yield the value 33 to set c to
+    yield 33
+
+} else {
+    
+    yield 99
+}
+
+-- This is a bare expression that should just print the value of c
+c

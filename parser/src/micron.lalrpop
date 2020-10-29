@@ -18,19 +18,19 @@ use micron_ast::{
 
 grammar;
 
-//  Means to allow comments from issue #509 
-match {
-    // Ignore C++-style comments
-    r"//[^\n\r]*[\n\r]*" => { },
-} else {
-    // Other things you want to match
-}
-else {
-    // Ignore whitespace
-    // You probably want this to have low precedence
-    r"\s*" => { },
-    _ // Everything else
-}
+////  Means to allow comments from issue #509 
+//match {
+//    // Ignore C++-style comments
+//    r"//[^\n\r]*[\n\r]*" => { },
+//} else {
+//    // Other things you want to match
+//}
+//else {
+//    // Ignore whitespace
+//    // You probably want this to have low precedence
+//    r"\s*" => { },
+//    _ // Everything else
+//}
 
 // Entry point for lalrpop
 pub Program: Vec<Box<Statement>> = {
