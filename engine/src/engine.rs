@@ -12,7 +12,19 @@ use rug::{Integer, Float, Assign, ops::Pow};
 use std::{ cell::RefCell, rc::Rc };
 
 extern crate micron_ast;
-use micron_ast::{ Statement, Expr, VariableType, DictAccessType, Accessors, MemberMethod, UnaryOpcode, Opcode, RADIX, FLOAT_PRECISION};
+use micron_ast::{ 
+    Statement, 
+    Expr, 
+    VariableType, 
+    DictAccessType, 
+    ConditionalBlock,
+    Accessors, 
+    MemberMethod, 
+    UnaryOpcode, 
+    Opcode, 
+    RADIX, 
+    FLOAT_PRECISION
+};
 
 use crate::types::{ Dictionary, RecordData };
 use crate::error::ExecutionError;
@@ -47,13 +59,25 @@ impl Engine {
         self.scopes.pop();
     }
 
+    fn return_to_scope(&mut self, scope_size: usize) {
+
+        // Remove any still existing scopes from operation
+        'scope_resize: loop {
+            if scope_size == self.scopes.len() || self.scopes.len() == 0 {
+                break 'scope_resize;
+            } else {
+                self.pop_scope();
+            }
+        }
+    }
+
     /// Get a record - Traverses scopes in reverse in an attempt
     /// to find the requested record. The first one found will be returned
     fn get_record(&self, key: &String) -> Option<Rc<RefCell<RecordData>>> {
         for scope in self.scopes.iter().rev() {
             match scope.get(key) {
                 Some(record) => { return Some(record); }
-                None         => { return None; }
+                None         => { /* Continue along  */ }
             }
         }
         None
@@ -78,7 +102,26 @@ impl Engine {
     /// Set a record
     fn set_record(&mut self, key: &String, record: RecordData) {
         
-        self.current_scope().set(key, record);
+        /*
+            When setting a record we attempt to get the record first. This is to ensure we are setting
+            the correct variable. If the variable exists in an outer scope it will take priority over
+            creating a new variable in the local scope. If it was created in the local scope, this will
+            update the one in the local scope
+        */
+        match self.get_record(key) {
+            Some(existing_record) => {
+
+                existing_record.borrow_mut().update_value(record);
+            },
+            None => {
+
+                /*
+                    If the item didn't exist then we will create it in the new scope
+                */
+                self.current_scope().set(key, record);
+            }
+        }
+
     }
 
     /// Attempt to remove a variable
@@ -270,6 +313,30 @@ impl Engine {
                     None => {
 
                         // Get the resulting expression
+                        match self.op_stack.pop() {
+
+                            // If nothing was placed on the stack thats fine
+                            None => { }
+
+                            // If there is something on the stack, show it
+                            Some(val) => { 
+
+                                // Print the value for now
+                                println!("{:?}", val.borrow().get_value());
+                             }
+                        };
+
+                    }
+                }
+            }
+
+            Statement::Yield(expr) => {
+
+                // Execute the expression 
+                match self.execute_expression(*expr) {
+                    Some(e) => { return Some(e); }
+                    None => {
+                        // Get the resulting expression
                         let value = match self.op_stack.pop() {
                             None => {
                                 return Some(ExecutionError::StackError);
@@ -278,10 +345,33 @@ impl Engine {
                             Some(val) => { val.borrow().get_value() }
                         };
 
-                        // Print the value for now
-                        println!("{:?}", value);
+                        // Remove the current scope 
+                        self.pop_scope();
+
+                        // Put the value on the stack 
+                        self.op_stack.push(Rc::new(RefCell::new(value)));
                     }
                 }
+
+                // If the expression was 
+            }
+
+            Statement::ScopedStatementBlock(statements) => {
+
+                let scope_size = self.scopes.len();
+                self.new_scope();
+
+                for statement in statements {
+                    match self.execute_statement(*statement) {
+                        Some(e) => { 
+                            
+                            self.return_to_scope(scope_size);
+                            return Some(e) 
+                        }
+                        None => {}
+                    }
+                }
+                self.return_to_scope(scope_size);
             }
         }
 
@@ -390,7 +480,81 @@ impl Engine {
 
                 return self.perform_opcode(*lhs_expr, *rhs_expr, op);
             }
+
+            // If Expression
+            //
+            Expr::IfExpression(conditional_blocks) => {
+                return self.process_if_expression(*conditional_blocks)
+            }
         }
+    }
+
+    /// Process conditional expressions
+    fn process_if_expression(&mut self, conditional_blocks: Vec<ConditionalBlock>) -> Option<ExecutionError> {
+
+        'condition_loop: for conditional in conditional_blocks {
+
+            match conditional.expression {
+                Some(expression) => {
+                    println!("non-else stmt");
+
+                    // Process the expression to see if we should execute the body
+                    match self.execute_expression(*expression) {
+                        Some(e) => return Some(e),
+                        None => {}
+                    }
+
+                    // Get the value off the stack
+                    let value = match self.op_stack.pop() {
+                        None => {
+                            eprintln!("Unable to get variable from stack for conditional expression");
+                            return Some(ExecutionError::StackError);
+                        }
+                        Some(val) => { val }
+                    };
+
+                    // Check that the value matches requirements for 'true'
+                    let check_condition = match value.borrow().clone() {
+                        RecordData::Integer(i) => { i > 0 }
+                        RecordData::Float(f)   => { f > 0.0 }
+                        _ => { false }
+                    };
+
+                    // Explicitly continue if the condition wasn't true
+                    if !check_condition {
+                        continue 'condition_loop;
+                    }
+                }
+
+                None => { println!("else stmt"); }
+            }
+
+            // If we get here that means we are in the block we should execute, so we 
+            // create a new scope for the statement, and execute it. Once its executed 
+            // we will pop the scope
+
+            let scope_size = self.scopes.len();
+
+            self.new_scope();
+
+            for expression in conditional.body {
+                
+                // Execute each statement
+                if let Some(e) =  self.execute_statement(*expression) {
+                    return Some(e);
+                };
+
+                // If one of the statements we executed caused us to leave the 
+                // current scope then we need to stop!
+                if self.scopes.len() <= scope_size {
+                    break 'condition_loop;
+                }
+            }
+
+            self.return_to_scope(scope_size);
+        }
+
+        None
     }
 
     /// Process a modification 
@@ -482,11 +646,8 @@ impl Engine {
                         match new_item.to_string() {
                             Some(v) => { 
                                 accessed_item.borrow_mut().update_value(v.clone());
-                                self.op_stack.push(Rc::new(RefCell::new(RecordData::Integer(Integer::from(1)))));
-                            
                             }
                             None    => { 
-                                self.op_stack.push(Rc::new(RefCell::new(RecordData::Integer(Integer::from(0)))));
                                 return Some(ExecutionError::ConversionFailure(method.method, "Convert item to string".to_string())) 
                             }
                         }
@@ -498,11 +659,8 @@ impl Engine {
                         match new_item.to_int() {
                             Some(v) => { 
                                 accessed_item.borrow_mut().update_value(v.clone());
-                                self.op_stack.push(Rc::new(RefCell::new(RecordData::Integer(Integer::from(1))))) 
-                            
                             }
                             None    => { 
-                                self.op_stack.push(Rc::new(RefCell::new(RecordData::Integer(Integer::from(0)))));
                                 return Some(ExecutionError::ConversionFailure(method.method, "Convert item to int".to_string()))
                              }
                         }
@@ -514,11 +672,9 @@ impl Engine {
                         match new_item.to_float() {
                             Some(v) => { 
                                 accessed_item.borrow_mut().update_value(v.clone());
-                                self.op_stack.push(Rc::new(RefCell::new(RecordData::Integer(Integer::from(1))))) 
                             
                             }
                             None    => { 
-                                self.op_stack.push(Rc::new(RefCell::new(RecordData::Integer(Integer::from(0)))));
                                 return Some(ExecutionError::ConversionFailure(method.method, "Convert item to float".to_string())) 
                             }
                         }

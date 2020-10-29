@@ -12,15 +12,32 @@ use micron_ast::{
     Accessors, 
     MemberMethod, 
     DictEntry,
-    DictAccessType
+    DictAccessType,
+    ConditionalBlock
 };
 
 grammar;
 
+//  Means to allow comments from issue #509 
+match {
+    // Ignore C++-style comments
+    r"//[^\n\r]*[\n\r]*" => { },
+} else {
+    // Other things you want to match
+}
+else {
+    // Ignore whitespace
+    // You probably want this to have low precedence
+    r"\s*" => { },
+    _ // Everything else
+}
+
+// Entry point for lalrpop
 pub Program: Vec<Box<Statement>> = {
 
     // Accept multiple statements
-    Statements+ => <>
+    <s:Statements+> => s,
+
 }
 
 // All of the types of statements within the language
@@ -28,6 +45,12 @@ Statements: Box<Statement> = {
 
     <a:AssignmentStatement> => a,
     <b:BareExpressionStatement> => b,
+    <c:YieldStatement> => c,
+    <s:ScopedStatements> => s,
+}
+
+ScopedStatements: Box<Statement> = {
+    "{" <s:Statements+> "}" => Box::new(Statement::ScopedStatementBlock(s))
 }
 
 // Assignment statement 
@@ -43,6 +66,11 @@ BareExpressionStatement: Box<Statement> = {
     <b:BuiltInFunction> => Box::new(Statement::BareExpression(b))
 }
 
+// Yield statement
+YieldStatement: Box<Statement> = {
+
+    "yield" <e:Expr> => Box::new(Statement::Yield(e)),
+}
 
 //    Variables:
 //    my_var
@@ -54,16 +82,14 @@ VarTerm: VariableType = {
     <v:Variable> <d:DictAccessor+> => VariableType::Nested(v, d)
 }
 
-
 // Expression
 Expr: Box<Expr> = {
+    IfExpr => Box::new(Expr::IfExpression(<>)),
     Expr ExprOp Factor => Box::new(Expr::Op(<>)),
     Factor,
     "!" <f:Factor> => Box::new(Expr::UnaryOp(f, UnaryOpcode::Negate)),
     "~" <f:Factor> => Box::new(Expr::UnaryOp(f, UnaryOpcode::BwNot)),
 };
-
-
 
 Access: Accessors = {
     "."  => Accessors::Dot
@@ -148,6 +174,85 @@ CallParams: Vec<Box<Expr>> = {
 BuiltInFunction: Box<Expr> = {
 
     "#" <f:Function> "(" <v:Variable> ")" => Box::new(Expr::BuiltInModifierCall(f, v))
+}
+
+
+IfExpr: Box<Vec<ConditionalBlock>> = {
+    "if" <c:Expr> "{" <s:Statements+> "}" <e:ElseIf> => { 
+        let mut v = Vec::new();
+        v.push(ConditionalBlock{
+            expression: Some(c),
+            body: s
+        });
+        v.append(&mut e.clone());
+        Box::new(v)
+    },
+    "if" <c:Expr> "{" <s:Statements+> "}" <e:Else>   => { 
+        let mut v = Vec::new();
+        v.push(ConditionalBlock{
+            expression: Some(c),
+            body: s
+        });
+        v.append(&mut e.clone());
+        Box::new(v)
+    },
+    "if" <c:Expr> "{" <s:Statements+> "}"            => { 
+        let mut v = Vec::new();
+        v.push(ConditionalBlock{
+            expression: Some(c),
+            body: s
+        });
+        Box::new(v)
+    },
+}
+
+ElseIf: Vec<ConditionalBlock> = {
+    "elif" <c:Expr> "{" <s:Statements+> "}" <e:ElseIf> => {
+        let mut v = Vec::new();
+        v.push(ConditionalBlock{
+            expression: Some(c),
+            body: s
+        });
+        v.append(&mut e.clone());
+        v
+     },
+    "elif" <c:Expr> "{" <s:Statements+> "}" <e:Else>   => {
+        let mut v = Vec::new();
+        v.push(ConditionalBlock{
+            expression: Some(c),
+            body: s
+        });
+        v.append(&mut e.clone());
+        v
+     },
+    "elif" <c:Expr> "{" <s:Statements+> "}"            => {
+        let mut v = Vec::new();
+        v.push(ConditionalBlock{
+            expression: Some(c),
+            body: s
+        });
+        v
+     }
+}
+
+Else: Vec<ConditionalBlock> = {
+    "else" "{" <s:Statements+> "}"            => {
+        let mut v = Vec::new();
+        v.push(ConditionalBlock{
+            expression: None,
+            body: s
+        });
+        v
+     }
+}
+
+ConditionBlock: Box<ConditionalBlock> = {
+    <e:Expr> "{" <s:Statements+> "}" => {
+        Box::new(ConditionalBlock{
+            expression: Some(e),
+            body: s
+        })
+    }
 }
 
 Integer: rug::Integer = {
