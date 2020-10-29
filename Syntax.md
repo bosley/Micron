@@ -1,3 +1,14 @@
+# Comments
+
+Comments are basic. We don't allow fancy c-like comments right now. 
+
+```
+
+-- This is an example of a comment line
+-- Using two dashes we let the parser know we don't give a rats about whats happening.
+-- Comments are not permitted in the REPL... because thats just nonsense. 
+
+```
 
 # Integers
 Integers can be just about any size negative or positive thanks to the rug crate. 
@@ -33,8 +44,11 @@ The dictionaries are pretty cool. They can be nested to any arbitrary depth, hol
 
     key = "key_1"
 
-    my_dict[key]        // Will display 11
-    my_dict['key_2']    // Will display "some string"
+    -- Will display 11
+    my_dict[key]     
+
+    -- Will display "some string"   
+    my_dict['key_2'] 
 ```
 
 # Data priority
@@ -115,7 +129,9 @@ With this in mind, arbitrary scopes CAN be created to ensure a an outer scope us
 
     {
         p = 99
-        yield 0     // Will destroy the scope with p
+
+        - Will destroy the scope with p
+        yield 0
     }
 }
 ```
