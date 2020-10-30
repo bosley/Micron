@@ -139,16 +139,21 @@ With this in mind, arbitrary scopes CAN be created to ensure a an outer scope us
 # Functions 
 
 ```
+my_function = fn(x, y) {
 
-my_func = fn(var, var1, var2) {
+    inner_func = fn(x) {
 
-    result = var + var1 + var2
+        yield x + 1
+    }
 
-    yield result
+    yield inner_func::call(x) + y
 }
 
+-- Should make b = 10'
 
-fn(x, y){ return x + y }
+b = my_function::call(4, 5)
+
+b
 
 ```
 

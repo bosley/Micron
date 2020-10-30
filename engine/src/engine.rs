@@ -28,6 +28,7 @@ use micron_ast::{
 
 use crate::types::{ Dictionary, RecordData };
 use crate::error::ExecutionError;
+use crate::ins_queue::InstructionQueue;
 
 
 /// The Micron Engine 
@@ -36,7 +37,9 @@ pub struct Engine {
 
     /// Stored data
     scopes:   Vec<Dictionary>,
-    op_stack: Vec<Rc<RefCell<RecordData>>>
+    op_stack: Vec<Rc<RefCell<RecordData>>>,
+
+    ins_queue: InstructionQueue
 }
 
 impl Engine {
@@ -45,7 +48,8 @@ impl Engine {
     pub fn new() -> Self {
         Self {
             scopes: Vec::new(),
-            op_stack: Vec::new()
+            op_stack: Vec::new(),
+            ins_queue: InstructionQueue::new()
         }
     }
 
@@ -808,6 +812,13 @@ impl Engine {
                                         The scope escape detection method wont work here. Functions have
                                         too much that can happen inside them. We need to create an actual
                                         'return' instruction that forces the current function to bail out.
+
+
+
+                                        -- Need to use the InstructionQueue object . A return will clear out the current
+                                           set of instructions maybe and that might work. :D 
+
+                                           
                                 
                                 */
 
