@@ -20,8 +20,12 @@ pub enum ExecutionError {
 
     #[display(fmt = "Invalid Operation: {}", _0)]
     InvalidOperation(&'static str),
+    
+    #[display(fmt = "Invalid Parameter count for '{}' : Expected {}, got {}", _0, _1, _2)]
+    InvalidParamCount(&'static str, usize, usize),
 
     InvalidParameters,
 
-    IndexError
+    IndexError,
+
 }

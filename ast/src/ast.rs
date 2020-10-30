@@ -7,7 +7,7 @@ pub const RADIX: i32 = 10;
 #[derive(Debug, Clone)]
 pub enum VariableType {
    Singular(String),
-   Nested(String, Vec<DictAccessType>),
+   Nested(String, Vec<DictAccessType>)
 }
 
 #[derive(Debug, Clone)]
@@ -16,7 +16,7 @@ pub enum Statement {
     ScopedStatementBlock(Vec<Box<Statement>>),
     Assignment(VariableType, Box<Expr>),
     BareExpression(Box<Expr>),
-    Yield(Box<Expr>),
+    Yield(Box<Expr>)
 }
 
 #[derive(Debug, Clone)]
@@ -37,7 +37,9 @@ pub enum Expr {
     // { .. }
     Dict(Vec<Box<DictEntry>>),
 
-    IfExpression(Box<Vec<ConditionalBlock>>)
+    IfExpression(Box<Vec<ConditionalBlock>>),
+
+    FunctionExpression(Box<FunctionDefinition>),
 }
 
 
@@ -78,7 +80,8 @@ pub enum DictAccessType {
 
 #[derive(Debug, Clone)]
 pub enum Accessors {
-    Dot
+    Dot,    // .
+    Eyes    // ::
 }
 
 #[derive(Debug, Clone)]
@@ -97,4 +100,10 @@ pub struct DictEntry {
 pub struct ConditionalBlock {
     pub expression: Option<Box<Expr>>,
     pub body:       Vec<Box<Statement>>
+}
+
+#[derive(Debug, Clone)]
+pub struct FunctionDefinition {
+    pub params: Vec<String>,
+    pub body:   Vec<Box<Statement>>
 }

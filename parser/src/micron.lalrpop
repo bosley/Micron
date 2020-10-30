@@ -13,7 +13,8 @@ use micron_ast::{
     MemberMethod, 
     DictEntry,
     DictAccessType,
-    ConditionalBlock
+    ConditionalBlock,
+    FunctionDefinition
 };
 
 grammar;
@@ -72,6 +73,22 @@ YieldStatement: Box<Statement> = {
     "yield" <e:Expr> => Box::new(Statement::Yield(e)),
 }
 
+FunctionExpression: Box<Expr> = {
+
+    "fn" "(" <p:InputParams> ")" "{" <f:Statements+> "}" => {
+        Box::new(Expr::FunctionExpression(Box::new(FunctionDefinition{
+           params: p,
+           body:   f
+       })))
+    },
+    "fn" "(" ")" "{" <f:Statements+> "}" => {
+        Box::new(Expr::FunctionExpression(Box::new(FunctionDefinition{
+           params: Vec::new(),
+           body:   f
+       })))
+    }
+}
+
 //    Variables:
 //    my_var
 //    my_var['key']['key1']...['keyN']
@@ -84,6 +101,7 @@ VarTerm: VariableType = {
 
 // Expression
 Expr: Box<Expr> = {
+    FunctionExpression => <>,
     IfExpr => Box::new(Expr::IfExpression(<>)),
     Expr ExprOp Factor => Box::new(Expr::Op(<>)),
     Factor,
@@ -92,7 +110,8 @@ Expr: Box<Expr> = {
 };
 
 Access: Accessors = {
-    "."  => Accessors::Dot
+    "."  => Accessors::Dot,
+    "::" => Accessors::Eyes
 }
 
 ExprOp: Opcode = { // (3)
@@ -151,11 +170,6 @@ DictionaryEntry: Box<DictEntry> = {
                                     })
 }
 
-MethodCall: Box<MemberMethod> = {
-
-    "." <m:Method> => m
-}
-
 Method: Box<MemberMethod> = {
     <f:Function> "(" ")" => Box::new(MemberMethod{
         method: f,
@@ -169,6 +183,10 @@ Method: Box<MemberMethod> = {
 
 CallParams: Vec<Box<Expr>> = {
     <v:Multiples<",", Expr>> => <>
+}
+
+InputParams: Vec<String> = {
+    <v:Multiples<",", Variable>> => <>
 }
 
 BuiltInFunction: Box<Expr> = {

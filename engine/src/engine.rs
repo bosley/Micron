@@ -23,7 +23,7 @@ use micron_ast::{
     UnaryOpcode, 
     Opcode, 
     RADIX, 
-    FLOAT_PRECISION
+    FLOAT_PRECISION,
 };
 
 use crate::types::{ Dictionary, RecordData };
@@ -35,7 +35,7 @@ use crate::error::ExecutionError;
 pub struct Engine {
 
     /// Stored data
-    scopes: Vec<Dictionary>,
+    scopes:   Vec<Dictionary>,
     op_stack: Vec<Rc<RefCell<RecordData>>>
 }
 
@@ -137,6 +137,7 @@ impl Engine {
     fn get_record_by_var_type(&self, var_type: VariableType) -> Option<Rc<RefCell<RecordData>>> {
 
         match var_type {
+
             VariableType::Singular(var_name) => {
 
                 return self.get_record(&var_name);
@@ -303,6 +304,7 @@ impl Engine {
                 }
             }
 
+            // Bare expression 
             Statement::BareExpression(expr) => {
 
                 // Execute the expression
@@ -330,6 +332,7 @@ impl Engine {
                 }
             }
 
+            // Yield Statement
             Statement::Yield(expr) => {
 
                 // Execute the expression 
@@ -356,6 +359,7 @@ impl Engine {
                 // If the expression was 
             }
 
+            // Scoped statement block
             Statement::ScopedStatementBlock(statements) => {
 
                 let scope_size = self.scopes.len();
@@ -486,6 +490,14 @@ impl Engine {
             Expr::IfExpression(conditional_blocks) => {
                 return self.process_if_expression(*conditional_blocks)
             }
+
+            //  Function expression
+            //
+            Expr::FunctionExpression(function_def) => {
+
+                self.op_stack.push(Rc::new(RefCell::new(RecordData::Func(*function_def))));
+                None
+            }
         }
     }
 
@@ -566,9 +578,6 @@ impl Engine {
                 match self.rm_record(&variable) {
                     Some(e) => return Some(e),
                     None    => {
-                        self.op_stack.push(Rc::new(RefCell::new(
-                            RecordData::Integer(Integer::from(1))
-                        )));
                         None
                     }
                 }
@@ -736,6 +745,108 @@ impl Engine {
                     }
                 }
             }
+
+            //  Eyes accessor ' :: '
+            //
+            Accessors::Eyes => {
+
+                match method.method.as_str() {
+                    "call" => {
+                        
+                        match accessed_item.borrow().get_value() {
+                            RecordData::Func(definition) => {
+                                
+                                if definition.params.len() != method.params.len() {
+
+                                    return Some(ExecutionError::InvalidParamCount("::call", definition.params.len(), method.params.len() ));
+                                }
+
+                                let mut param_items: Vec<RecordData> = Vec::new();
+
+                                // Execute expressions that are the params and build a list for params
+                                for expr in method.params {
+
+                                    // Execute the expression 
+                                    match self.execute_expression(*expr) {
+                                        Some(e) => { return Some(e); }
+                                        None => {
+                                            // Get the resulting expression
+                                            let value = match self.op_stack.pop() {
+                                                None => {
+                                                    return Some(ExecutionError::StackError);
+                                                }
+
+                                                Some(val) => { val.borrow().get_value() }
+                                            };
+
+                                            param_items.push(value);
+                                        }
+                                    }
+                                }
+
+                                // Save size for later
+                                let scope_size = self.scopes.len();
+
+                                // Create a new scope
+                                self.new_scope();
+
+                                // Get the new scope.
+                                let current_scope = self.current_scope();
+
+                                // Move the parameters to the new scope
+                                let mut marker = 0;
+                                for var in definition.params {
+                                    current_scope.set(&var, param_items[marker].clone());
+                                    marker += 1;
+                                }
+
+                                /*
+                                
+                                        TODO:
+
+
+                                        The scope escape detection method wont work here. Functions have
+                                        too much that can happen inside them. We need to create an actual
+                                        'return' instruction that forces the current function to bail out.
+                                
+                                */
+
+                                // Drop the mutable reference
+                                drop(current_scope);
+
+                                // Execute function instructions
+                                'function_loop: for expression in definition.body {
+                                    
+                                    // Execute each statement
+                                    if let Some(e) =  self.execute_statement(*expression) {
+                                        return Some(e);
+                                    };
+
+                                    // If one of the statements we executed caused us to leave the 
+                                    // current scope then we need to stop!
+                                    if self.scopes.len() <= scope_size {
+                                        break 'function_loop;
+                                    }
+                                }
+
+                                self.return_to_scope(scope_size);
+                            }
+
+                            _ => {
+                                return Some(ExecutionError::InvalidOperation("'call' only exists for function types"));
+                            }
+                        }
+
+                        return None;
+                    }
+
+                    _ => {
+
+                        return Some(ExecutionError::UnknownVariableMethod("::", method.method));
+                    }
+                }
+            }
+
         }
     }
 
@@ -790,9 +901,12 @@ impl Engine {
                 return Some(ExecutionError::InvalidOperation("Attempted unary operation on string type"));
             }
 
-
             RecordData::Dict(_) => {
                 return Some(ExecutionError::InvalidOperation("Attempted unary operation on dictionary type"));
+            }
+
+            RecordData::Func(_) => {
+                return Some(ExecutionError::InvalidOperation("Attempted unary operation on function type"));
             }
         }
     }
@@ -886,6 +1000,9 @@ impl Engine {
                     RecordData::Dict(_) => {
                         return Some(ExecutionError::InvalidOperation("No valid operation for type Dictionary"));
                     }
+                    RecordData::Func(_) => {
+                        return Some(ExecutionError::InvalidOperation("No valid operation for type Function"));
+                    }
                 }
             }
 
@@ -914,6 +1031,9 @@ impl Engine {
                     RecordData::Dict(_) => {
                         return Some(ExecutionError::InvalidOperation("No valid operation for type Dictionary"));
                     }
+                    RecordData::Func(_) => {
+                        return Some(ExecutionError::InvalidOperation("No valid operation for type Function"));
+                    }
                 }
             }
 
@@ -933,6 +1053,9 @@ impl Engine {
                     RecordData::Dict(_) => {
                         return Some(ExecutionError::InvalidOperation("No valid operation for type Dictionary"));
                     }
+                    RecordData::Func(_) => {
+                        return Some(ExecutionError::InvalidOperation("No valid operation for type Function"));
+                    }
                 }
             }
 
@@ -940,6 +1063,9 @@ impl Engine {
                 return Some(ExecutionError::InvalidOperation("No valid operation for type Dictionary"));
             }
 
+            RecordData::Func(_) => {
+                return Some(ExecutionError::InvalidOperation("No valid operation for type Function"));
+            }
         }
     }
 

@@ -1,0 +1,32 @@
+
+
+my_function = fn(x, y) {
+
+    inner_func = fn(x) {
+
+        yield x + 1
+    }
+
+    yield inner_func::call(x) + y
+}
+
+-- Should make b = 10'
+
+b = my_function::call(4, 5)
+
+b
+
+-- Recursion test!
+-- Almost everything here is okay. Need to create an honest 'return' instruction, yield wont cut it here.
+-- my_rec = fn(x) {
+-- 
+--     x
+-- 
+--     if x > 0 {
+--         yield x
+--     } else {
+--         yield my_rec::call(x - 1)
+--     }
+-- }
+-- 
+-- b = my_rec::call(10)

@@ -4,7 +4,7 @@ use rug::{Integer, Float, Assign};
 use std::collections::HashMap;
 
 extern crate micron_ast;
-use micron_ast::{ FLOAT_PRECISION, RADIX };
+use micron_ast::{ FLOAT_PRECISION, RADIX, FunctionDefinition };
 
 /// Record of data
 #[derive(Debug, Clone)]
@@ -12,7 +12,8 @@ pub(crate) enum RecordData {
     Integer(Integer),
     Float(Float),
     String(String),
-    Dict(Dictionary)
+    Dict(Dictionary),
+    Func(FunctionDefinition)
 }
 
 /// Helper functions for record data
@@ -28,8 +29,14 @@ impl RecordData {
             RecordData::Integer(v) => RecordData::Integer(v.clone()),
             RecordData::Float(v)   => RecordData::Float(v.clone()),
             RecordData::String(v)  => RecordData::String(v.clone()),
-            RecordData::Dict(v)    => RecordData::Dict(v.clone())
+            RecordData::Dict(v)    => RecordData::Dict(v.clone()),
+            RecordData::Func(v)    => RecordData::Func(v.clone()),
         }
+    }
+
+    pub(crate) fn get_ref(&self) -> &RecordData {
+        
+        return &self
     }
 
     pub(crate) fn to_string(&mut self) -> Option<RecordData> {
@@ -48,6 +55,11 @@ impl RecordData {
             }
 
             RecordData::Dict(v)    => {
+
+                Some(RecordData::String(format!("{:?}", v)))
+            }
+
+            RecordData::Func(v)    => {
 
                 Some(RecordData::String(format!("{:?}", v)))
             }
@@ -86,6 +98,10 @@ impl RecordData {
 
                 None
             }
+            RecordData::Func(_)    => {
+
+                None
+            }
         }
     }
 
@@ -117,6 +133,11 @@ impl RecordData {
             }
 
             RecordData::Dict(_)    => {
+
+                None
+            }
+
+            RecordData::Func(_)    => {
 
                 None
             }
